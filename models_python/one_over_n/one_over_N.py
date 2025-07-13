@@ -26,12 +26,20 @@ def main(chars: pd.DataFrame, features: pd.DataFrame, daily_ret: pd.DataFrame) -
     Returns:
         pd.DataFrame: DataFrame with columns 'id', eom, and 'w'.
     """
-    # Prepare the data
-    # chars = pd.read_parquet('data/raw/ctff_chars.parquet') 
+    # Prepare the data 
     df = one_over_n(chars)
 
     # Output
     return df.to_pandas()
+
+# Test code and save output (SET TO FALSE WHEN SUBMITTING)
+if False:
+    chars = pd.read_parquet('data/raw/ctff_chars.parquet')
+    features = pd.read_parquet('data/raw/ctff_features.parquet')
+    daily_ret = pd.read_parquet('data/raw/ctff_daily_ret.parquet')
+    output = main(chars=chars, features=features, daily_ret=daily_ret)
+    output.to_csv('data/processed/one_over_n.csv', index=False)
+
 
 if __name__ == "__main__":
     features, chars, daily_ret = load_data()
