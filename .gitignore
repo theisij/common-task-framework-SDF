@@ -15,6 +15,7 @@ wheels/
 /data/processed/*
 /output/figures/*
 /output/tables/*
+/documentation/*
 
 # …except “.gitkeep” placeholders…
 !/data/raw/.gitkeep
@@ -22,4 +23,5 @@ wheels/
 !/data/processed/.gitkeep
 !/output/figures/.gitkeep
 !/output/tables/.gitkeep
+!/documentation/.gitkeep
 

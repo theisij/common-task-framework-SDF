@@ -38,7 +38,7 @@ if False:
     features = pd.read_parquet('data/raw/ctff_features.parquet')
     daily_ret = pd.read_parquet('data/raw/ctff_daily_ret.parquet')
     output = main(chars=chars, features=features, daily_ret=daily_ret)
-    output.to_csv('data/processed/one_over_n.csv', index=False)
+    output.to_csv('data/processed/one_over_n/one_over_n.csv', index=False)
 
 
 if __name__ == "__main__":
