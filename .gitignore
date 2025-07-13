@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+
+# ignore everything in these folders...
+/data/raw/*
+/data/interim/*
+/data/processed/*
+/output/figures/*
+/output/tables/*
+
+# …except “.gitkeep” placeholders…
+!/data/raw/.gitkeep
+!/data/interim/.gitkeep
+!/data/processed/.gitkeep
+!/output/figures/.gitkeep
+!/output/tables/.gitkeep
+
