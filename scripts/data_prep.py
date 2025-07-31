@@ -13,7 +13,7 @@ features = (
 )
 df = pl.scan_parquet("data/raw/ctff_chars.parquet") # Change name from df to chars
 ids = ["id", "excntry", "eom", "eom_ret", "ret_exc_lead1m", "ctff_test"]
-group_cols = ["id", "excntry", "feature"]
+group_cols = ["excntry", "eom", "feature"]
 
 # Impute and rank
 start_time = time.perf_counter()
