@@ -27,10 +27,6 @@ data_processed = impute_and_rank(
 )
 print(f"Elapsed time: {time.perf_counter()-start_time:.6f} seconds") # 1000 sec for lazy API without streaming
 
-# Collect and save 
-(
-    data_processed
-    .collect(engine = 'streaming')
-    .write_parquet("data/processed/ctff_chars_processed.parquet")
-)
+# Save 
+data_processed.write_parquet("data/processed/ctff_chars_processed.parquet")
 

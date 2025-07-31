@@ -67,7 +67,8 @@ def impute_and_rank(
                 value = pl.col('value').median().over(group_cols)
             )
 
-    # Cast to wide format
+    # # Cast to wide format
+    df = df.collect() # Pivot doesn't work with LazyFrame
     df = (
         df
         .pivot(
