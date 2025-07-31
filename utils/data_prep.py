@@ -67,4 +67,14 @@ def impute_and_rank(
                 value = pl.col('value').median().over(group_cols)
             )
 
-    return df.collect()
+    # Cast to wide format
+    df = (
+        df
+        .pivot(
+            index = ids,
+            on = "feature",
+            values = "value"
+        )
+    )
+
+    return df
