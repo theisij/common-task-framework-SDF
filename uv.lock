@@ -11,6 +11,7 @@ dependencies = [
     { name = "pandas" },
     { name = "polars" },
     { name = "pyarrow" },
+    { name = "pyreadstat" },
 ]
 
 [package.metadata]
@@ -19,6 +20,16 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "polars", specifier = ">=1.31.0" },
     { name = "pyarrow", specifier = ">=20.0.0" },
+    { name = "pyreadstat", specifier = ">=1.3.1" },
+]
+
+[[package]]
+name = "narwhals"
+version = "2.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/f0/b0550d9b84759f4d045fd43da2f811e8b23dc2001e38c3254456da7f3adb/narwhals-2.1.2.tar.gz", hash = "sha256:afb9597e76d5b38c2c4b7c37d27a2418b8cc8049a66b8a5aca9581c92ae8f8bf", size = 533772, upload-time = "2025-08-15T08:24:50.916Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/01/824fff6789ce92a53242d24b6f5f3a982df2f610c51020f934bf878d2a99/narwhals-2.1.2-py3-none-any.whl", hash = "sha256:136b2f533a4eb3245c54254f137c5d14cef5c4668cff67dc6e911a602acd3547", size = 392064, upload-time = "2025-08-15T08:24:48.788Z" },
 ]
 
 [[package]]
@@ -116,6 +127,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/cb/65fa110b483339add6a9bc7b6373614166b14e20375d4daa73483755f830/pyarrow-20.0.0-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:f3b117b922af5e4c6b9a9115825726cac7d8b1421c37c2b5e24fbacc8930612c", size = 42839441, upload-time = "2025-04-27T12:32:46.64Z" },
     { url = "https://files.pythonhosted.org/packages/98/7b/f30b1954589243207d7a0fbc9997401044bf9a033eec78f6cb50da3f304a/pyarrow-20.0.0-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:e724a3fd23ae5b9c010e7be857f4405ed5e679db5c93e66204db1a69f733936a", size = 44503279, upload-time = "2025-04-27T12:32:56.503Z" },
     { url = "https://files.pythonhosted.org/packages/37/40/ad395740cd641869a13bcf60851296c89624662575621968dcfafabaa7f6/pyarrow-20.0.0-cp313-cp313t-win_amd64.whl", hash = "sha256:82f1ee5133bd8f49d31be1299dc07f585136679666b502540db854968576faf9", size = 25944982, upload-time = "2025-04-27T12:33:04.72Z" },
+]
+
+[[package]]
+name = "pyreadstat"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b7/d6/7e320a91eb66b9158cc428b62baba4f95a2d384af46a94225b61445a2e8a/pyreadstat-1.3.1.tar.gz", hash = "sha256:5e22b4000570cc0b0b850c7fedc13129546729ca413d67697ede0074423b1ef6", size = 610773, upload-time = "2025-08-14T13:58:15.855Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/61/48dc6090e999db55920e03c60fe07a4e365cdfb4a3276dc31a983e0d1361/pyreadstat-1.3.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:62b25a9b41902161ba1887acdb4121ec792e055649f2f92cca0bc552526a7d6d", size = 622469, upload-time = "2025-08-14T13:58:04.796Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/74/3b1831bb937a69ca2ffc807a1be984792cefa01083d5c3edac8c9c0a9af9/pyreadstat-1.3.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b107199a310880ef8fb509068888a7242d5ae2b27f658b4feddf02b77da14c0f", size = 621649, upload-time = "2025-08-14T13:58:06.563Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/26/54838b93bf9e710a2b703158dca238b3bc04369d9ceb7dbba5a4728b5587/pyreadstat-1.3.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:abe59aa450a4e0b677e17036500da2c7b6f27f28d5d7ca7d09e47d1a484662b8", size = 634119, upload-time = "2025-08-14T13:58:08.789Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/38/1a6da8a50cbc1384128c818582dce3c31269afa82258d74cd677bffd503f/pyreadstat-1.3.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:38f296cede7b02bbefce44dcc1a1713bf7b143fac82fd8b7e13bdf44a1eb21e7", size = 665371, upload-time = "2025-08-14T13:58:10.909Z" },
+    { url = "https://files.pythonhosted.org/packages/06/74/1090e6cfe3ea842f009394feedef3203c19d78b91ab14356cbbdeb6f0ac6/pyreadstat-1.3.1-cp313-cp313-win_amd64.whl", hash = "sha256:de2e258ce3b3c8c19a0adcd33a835b8141028f07cf2aa7f950af2250150deb9a", size = 2396063, upload-time = "2025-08-14T13:58:14.231Z" },
 ]
 
 [[package]]

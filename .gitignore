@@ -10,6 +10,8 @@ wheels/
 .venv
 
 # ignore everything in these folders...
+/private/*
+/data/wrds/*
 /data/raw/*
 /data/interim/*
 /data/processed/*
