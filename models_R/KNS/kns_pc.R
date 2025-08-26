@@ -237,12 +237,15 @@ kns <- function(d, rw_factor_d_raw, mkt_ret_daily, features, opt_lambdas, use_pc
       w <- inv %*% mu_hist
     }
     
+    name <- paste("Kozak et al. (2020) -", ifelse(use_pc, "PC", "L2"))
+    
     dt <- data.table(
       eom_ret = d,
+      name = name,
       t(w[-length(w)]),
       me = sum(t(w) * c(-beta, 1))
     )
-    names(dt) <- c("eom_ret", "name", features, "me")
+    names(dt) <- c("eom_ret", features, "me")
     dt
 }
 
@@ -302,11 +305,25 @@ main <- function(chars, features, daily_ret) {
 }
 
 
-if (interactive()) {
-  features <- read_parquet("data/raw/ctff_features.parquet") |> pull(features)
-  chars <- read_parquet("data/raw/ctff_chars.parquet")
-  daily_ret <- read_parquet("data/raw/ctff_daily_ret.parquet")
+# Download the input data
+features <- read_parquet("../Data/CTF-data/ctff_features.parquet") |> pull(features)
+chars <- read_parquet("../Data/CTF-data/ctff_chars.parquet")
+daily_ret <- read_parquet("../Data/CTF-data/ctff_daily_ret.parquet") # Users don't have to use this data
+# Run code
+pf <- chars |> main(daily_ret=daily_ret, features=features)
+# Save output
+pf |> fwrite("../Data/CTF-output/kns_portfolio.csv")
 
-  pf <- chars |> main(daily_ret=daily_ret, features=features)
-  export_data(pf)
+# On our end --------------------------------------------------------------------
+# We source submitted code above
+# Save the outputted portfolio
+# Take the output in a separate file and visualize the performance:
+if (FALSE) {
+  chars[ctff_test==T, .(id, eom, eom_ret, ret_exc_lead1m)][pf, on = .(id, eom)][, .(
+    ret = sum(w * ret_exc_lead1m)
+  ), by = eom_ret][, .(
+    mean = mean(ret)*12,
+    sd = sd(ret)*sqrt(12),
+    sr = mean(ret)/sd(ret)*sqrt(12)
+  )]
 }
