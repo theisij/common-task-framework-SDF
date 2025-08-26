@@ -242,7 +242,7 @@ kns <- function(d, rw_factor_d_raw, mkt_ret_daily, features, opt_lambdas, use_pc
       t(w[-length(w)]),
       me = sum(t(w) * c(-beta, 1))
     )
-    names(dt) <- c("eom_ret", "name", features, "me")
+    names(dt) <- c("eom_ret", features, "me")
     dt
 }
 
