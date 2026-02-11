@@ -88,7 +88,7 @@ xgb_hp_search <- function(train, val, feat, params_base, hp_grid,
                            iter, es, cores, seed, print = F) {
   val_y <- val |> getinfo("label")
   train_mean <- train |> getinfo("label") |> mean()
-  search <- 1:nrow(hp_grid) %>% lapply(function(j) {
+  search <- 1:nrow(hp_grid) |> lapply(function(j) {
     if (print) print(paste0("HP: ", j))
     hps <- hp_grid[j, ]
     xgb_fit <- fit_xgb(train = train, val = val, params_base = params_base,
@@ -105,7 +105,7 @@ xgb_hp_search <- function(train, val, feat, params_base, hp_grid,
     )
     if (print) print(stats)
     cbind(hps, stats)
-  }) %>% rbindlist()
+  }) |> rbindlist()
   return(search)
 }
 
@@ -126,7 +126,7 @@ search_best_fun <- function(search) {
 xgb_main <- function(data_list, fold_dates, feat, params_base, hp_grid,
                       eta1, eta2, iter1, iter2, es, cores, seed) {
   # Stage 1: Find tree parameters with high learning rate
-  hp_grid1 <- hp_grid %>% mutate(learn_rate = eta1)
+  hp_grid1 <- hp_grid |> mutate(learn_rate = eta1)
   search_stage1 <- 1:length(fold_dates) |> map(function(i) {
     fold_data_list <- data_list$train |>
       fold_data_fun(fold_dates = fold_dates, feat = feat,
@@ -141,7 +141,7 @@ xgb_main <- function(data_list, fold_dates, feat, params_base, hp_grid,
   best_hp1 <- search_stage1 |> search_best_fun()
 
   # Stage 2: Find optimal iterations with low learning rate
-  hp_grid2 <- best_hp1 %>%
+  hp_grid2 <- best_hp1 |>
     select(mtry, tree_depth, sample_size, penalty, min_n, loss_reduction, hp_set) |>
     mutate(learn_rate = eta2)
   search_stage2 <- 1:length(fold_dates) |> map(function(i) {
@@ -166,7 +166,7 @@ xgb_main <- function(data_list, fold_dates, feat, params_base, hp_grid,
                         iter = best_iter2, es = NULL, cores = cores, seed = seed)
 
   # Predictions
-  pred <- final_fit %>% predict(newdata = data_list$test[, feat, with = F] %>% as.matrix())
+  pred <- final_fit |> predict(newdata = data_list$test[, feat, with = F] |> as.matrix())
   pred_op <- data_list$test[, .(id, eom, pred = drop(pred))]
   return(pred_op)
 }
@@ -218,8 +218,8 @@ main <- function(chars, features, daily_ret) {
     dials::tree_depth(range = c(1, 7), trans = NULL),
     dials::sample_prop(range = c(0.2, 1), trans = NULL),
     dials::penalty(range = c(-2, 2), trans = scales::log10_trans())
-  ) %>%
-    dials::grid_space_filling(size = xgb_hps, type = "max_entropy") %>%
+  ) |>
+    dials::grid_space_filling(size = xgb_hps, type = "max_entropy") |>
     mutate(
       mtry = mtry / length(features),
       min_n = 1,

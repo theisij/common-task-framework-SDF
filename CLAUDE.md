@@ -74,3 +74,10 @@ The returned DataFrame must have columns: **id**, **eom** (end-of-month date), *
 ### Directories Not in Git
 
 `data/` (raw, interim, processed, wrds), `output/` (figures, tables), and `private/` are gitignored.
+
+### R Environment
+- R installation: `C:/Program Files/R/R-4.4.0/bin/Rscript.exe`
+- Renv library: `renv/library/`
+
+### R specific guidelines
+- Always use the new pipe (`|>`) operator for chaining commands. Never the old pipe (`%>%`) operator.
