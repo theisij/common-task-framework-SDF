@@ -177,13 +177,17 @@ predictions_to_weights <- function(preds, n_pfs = 10) {
   preds[, pf_ls := case_when(
     pred <= quantile(pred, 1 / n_pfs) ~ "short",
     pred >= quantile(pred, 1 - 1 / n_pfs) ~ "long",
-    TRUE ~ NA_character_
+    TRUE ~ "none"
   ), by = .(excntry, eom)]
 
   # Equal-weight long-short
   weights <- copy(preds)
   weights[, n_side := .N, by = .(eom, pf_ls)]
-  weights[, w := fifelse(pf_ls == "long", 1 / n_side, -1 / n_side)]
+  weights[, w := case_when(
+    pf_ls == "long" ~ 1 / n_side,
+    pf_ls == "short" ~ -1 / n_side,
+    TRUE ~ 0
+  ), by = .(eom)]
   weights[, c("pf_ls", "n_side", "pred") := NULL]
   return(weights[, .(id, eom, w)])
 }
