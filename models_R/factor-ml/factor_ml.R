@@ -12,19 +12,22 @@ library(dials)
 prepare_pred_data <- function(data, features, feat_prank, impute) {
   if (feat_prank) {
     data[, (features) := lapply(.SD, as.double), .SDcols = features]
-    for (f in features) {
-      if (match(f, features) %% 10 == 0) print(paste0("Feature ", match(f, features), " out of ", length(features)))
-      data[, zero := (get(f) == 0)]
-      data[!is.na(get(f)), (f) := ecdf(get(f))(get(f)), by = .(excntry, eom)]
-      data[zero == T, (f) := 0][, zero := NULL]
-      data[, (f) := get(f) - 0.5]
-    }
+    cat(sprintf("Percentile-ranking %d features...\n", length(features)))
+    data[, (features) := lapply(.SD, function(x) {
+      non_na <- !is.na(x)
+      is_zero <- non_na & (x == 0)
+      x[non_na] <- frank(x[non_na], ties.method = "max") / sum(non_na)
+      x[is_zero] <- 0
+      x - 0.5
+    }), .SDcols = features, by = .(excntry, eom)]
   }
   if (impute) {
     if (feat_prank) {
-      data[, (features) := lapply(.SD, function(x) if_else(is.na(x), 0, x)), .SDcols = features]
+      setnafill(data, fill = 0, cols = features)
     } else {
-      data[, (features) := lapply(.SD, function(x) if_else(is.na(x), median(x, na.rm = T), x)), .SDcols = features, by = .(excntry, eom)]
+      data[, (features) := lapply(.SD, function(x) {
+        fifelse(is.na(x), median(x, na.rm = TRUE), x)
+      }), .SDcols = features, by = .(excntry, eom)]
     }
   }
   return(data)
