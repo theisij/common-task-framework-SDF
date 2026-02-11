@@ -181,7 +181,7 @@ predictions_to_weights <- function(preds, n_pfs = 10) {
   ), by = .(excntry, eom)]
 
   # Equal-weight long-short
-  weights <- preds[!is.na(pf_ls)]
+  weights <- copy(preds)
   weights[, n_side := .N, by = .(eom, pf_ls)]
   weights[, w := fifelse(pf_ls == "long", 1 / n_side, -1 / n_side)]
   weights[, c("pf_ls", "n_side", "pred") := NULL]
