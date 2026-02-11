@@ -75,6 +75,11 @@ The returned DataFrame must have columns: **id**, **eom** (end-of-month date), *
 
 `data/` (raw, interim, processed, wrds), `output/` (figures, tables), and `private/` are gitignored.
 
+### Python Environment
+- Python installation: `c:\\Users\\tij2\\Dropbox\\Research\\Active projects\\CTF-github\\.venv\\Scripts\\python.exe`
+- Virtual environment: `.venv/`
+- Package manager: uv
+
 ### R Environment
 - R installation: `C:/Program Files/R/R-4.4.0/bin/Rscript.exe`
 - Renv library: `renv/library/`
