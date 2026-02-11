@@ -63,29 +63,30 @@ fit_xgb <- function(train, val, params_base, params, iter, es, cores, seed) {
     base_score = params_base$base_score,
     eval_metric = params_base$eval_metric,
     booster = params_base$booster,
-    max_depth = params$tree_depth,
-    eta = params$learn_rate,
-    gamma = params$loss_reduction,
-    subsample = params$sample_size,
-    colsample_bytree = params$mtry,
-    min_child_weight = params$min_n,
-    lambda = params$penalty
+    max_depth = as.integer(params$tree_depth),
+    learning_rate = as.numeric(params$learn_rate),
+    min_split_loss = as.numeric(params$loss_reduction),
+    subsample = as.numeric(params$sample_size),
+    colsample_bytree = as.numeric(params$mtry),
+    min_child_weight = as.numeric(params$min_n),
+    reg_lambda = as.numeric(params$penalty),
+    nthread = cores
   )
   model <- xgb.train(
     data = train,
     params = params_all,
-    watchlist = list(train = train, val = val),
+    evals = list(train = train, val = val),
     nrounds = iter,
     early_stopping_rounds = es,
     verbose = 0,
-    maximize = F,
-    nthread = cores
+    maximize = FALSE
   )
   return(model)
 }
 
 xgb_hp_search <- function(train, val, feat, params_base, hp_grid,
                            iter, es, cores, seed, print = F) {
+  hp_grid <- as.data.table(hp_grid) 
   val_y <- val |> getinfo("label")
   train_mean <- train |> getinfo("label") |> mean()
   search <- 1:nrow(hp_grid) |> lapply(function(j) {
@@ -94,14 +95,14 @@ xgb_hp_search <- function(train, val, feat, params_base, hp_grid,
     xgb_fit <- fit_xgb(train = train, val = val, params_base = params_base,
                         params = hps, iter = iter, es = es, cores = cores,
                         seed = seed)
-    val_mse <- xgb_fit$best_score^2
+    val_mse <- as.numeric(xgb.attr(xgb_fit, "best_score"))^2
     stats <- data.table(
       val_mse = val_mse,
       val_rmse = val_mse^0.5,
       r2 = 1 - val_mse / mean((val_y - mean(val_y))^2),
       r2_zero = 1 - val_mse / mean(val_y^2),
       r2_oos = 1 - val_mse / mean((val_y - train_mean)^2),
-      best_iter = xgb_fit$best_iteration
+      best_iter = as.integer(xgb.attr(xgb_fit, "best_iteration"))
     )
     if (print) print(stats)
     cbind(hps, stats)
