@@ -273,7 +273,7 @@ main <- function(chars, features, daily_ret) {
 }
 
 # Section 7: Local Testing -----------------------------------------------------
-if (interactive()) {
+if (FALSE) {
   features <- arrow::read_parquet("data/raw/ctff_features.parquet")
   chars <- arrow::read_parquet("data/raw/ctff_chars.parquet")
   daily_ret <- arrow::read_parquet("data/raw/ctff_daily_ret.parquet")
