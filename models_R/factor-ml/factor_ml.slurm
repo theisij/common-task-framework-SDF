@@ -41,6 +41,7 @@ apptainer exec -B "$PWD" "$IMAGE" \
 
 # Run factor_ml
 echo "[run] Running factor_ml..."
+START_TIME=$(date +%s)
 apptainer exec -B "$PWD" "$IMAGE" \
   Rscript -e '
 source("models_R/factor-ml/factor_ml.R")
@@ -60,3 +61,7 @@ print(paste("Total rows:", nrow(pf)))
 
 data.table::fwrite(pf, "data/processed/factor_ml.csv")
 '
+
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+echo "[done] Elapsed time: $((ELAPSED / 3600))h $(((ELAPSED % 3600) / 60))m $((ELAPSED % 60))s"
