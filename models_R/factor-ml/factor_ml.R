@@ -187,7 +187,7 @@ predictions_to_weights <- function(preds, n_pfs = 10) {
     pf_ls == "long" ~ 1 / n_side,
     pf_ls == "short" ~ -1 / n_side,
     TRUE ~ 0
-  ), by = .(eom)]
+  )]
   weights[, c("pf_ls", "n_side", "pred") := NULL]
   return(weights[, .(id, eom, w)])
 }
