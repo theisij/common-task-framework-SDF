@@ -46,12 +46,12 @@ apptainer exec -B "$PWD" "$IMAGE" \
   Rscript -e '
 source("models_R/factor-ml/factor_ml.R")
 
-#features  <- arrow::read_parquet("data/raw/ctff_features.parquet")
-#chars     <- arrow::read_parquet("data/raw/ctff_chars.parquet")
-#daily_ret <- arrow::read_parquet("data/raw/ctff_daily_ret.parquet")
-features  <- arrow::read_parquet("private/toy_dataset/ctff_features.parquet")
-chars     <- arrow::read_parquet("private/toy_dataset/ctff_chars.parquet")
-daily_ret <- arrow::read_parquet("private/toy_dataset/ctff_daily_ret.parquet")
+features  <- arrow::read_parquet("data/raw/ctff_features.parquet")
+chars     <- arrow::read_parquet("data/raw/ctff_chars.parquet")
+daily_ret <- arrow::read_parquet("data/raw/ctff_daily_ret.parquet")
+#features  <- arrow::read_parquet("private/toy_dataset/ctff_features.parquet")
+#chars     <- arrow::read_parquet("private/toy_dataset/ctff_chars.parquet")
+#daily_ret <- arrow::read_parquet("private/toy_dataset/ctff_daily_ret.parquet")
 
 pf <- main(chars = chars, features = features, daily_ret = daily_ret)
 
