@@ -27,3 +27,8 @@ wheels/
 !/output/tables/.gitkeep
 !/documentation/.gitkeep
 
+# Claude generated files
+bash.exe.stackdump
+.claude/
+settings.local.json
+
