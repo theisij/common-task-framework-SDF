@@ -19,11 +19,30 @@ echo SLURM_NODES are ${SLURM_NODELIST}
 echo '-------------------------------'
 echo -e '\n\n'
 
-# Restore renv packages
-R -q -e "renv::restore(prompt=FALSE)"
+# Load Apptainer
+module load apptainer/1.4.1-nkna
 
-# Run factor_ml in a single R session
-Rscript -e '
+# Apptainer image (R 4.5.1 tidyverse)
+IMAGE="${SLURM_SUBMIT_DIR}/r451-tidyverse.sif"
+if [[ ! -f "$IMAGE" ]]; then
+  echo "ERROR: Apptainer image not found: $IMAGE"
+  exit 1
+fi
+
+# Threading for BLAS/OpenMP-aware packages
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+# Restore renv packages
+echo "[bootstrap] renv::restore() inside container..."
+apptainer exec -B "$PWD" "$IMAGE" \
+  R -q -e "renv::restore(prompt=FALSE)"
+
+# Run factor_ml
+echo "[run] Running factor_ml..."
+apptainer exec -B "$PWD" "$IMAGE" \
+  Rscript -e '
 source("models_R/factor-ml/factor_ml.R")
 
 #features  <- arrow::read_parquet("data/raw/ctff_features.parquet")
