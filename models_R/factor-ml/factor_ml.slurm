@@ -23,7 +23,7 @@ echo -e '\n\n'
 module load apptainer/1.4.1-nkna
 
 # Apptainer image (R 4.5.1 tidyverse)
-IMAGE="${SLURM_SUBMIT_DIR}/r451-tidyverse.sif"
+IMAGE="${SLURM_SUBMIT_DIR}/r451-tidyverse-extended.sif"
 if [[ ! -f "$IMAGE" ]]; then
   echo "ERROR: Apptainer image not found: $IMAGE"
   exit 1
