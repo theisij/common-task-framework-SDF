@@ -24,6 +24,8 @@ We estimate expected returns using the XGBoost model [@chen2016xgboost] to predi
 
 We use a rolling window of 10 years of training data. For each test month, the training data is split into 5 temporal folds (i.e., 5 consecutive blocks of months in chronological order) for cross-validation. The XGBoost base score (the initial prediction before any trees are added) is set to 0.
 
+The frequency of hyperparameter tuning is controlled by the `test_period_length` parameter, which specifies the number of consecutive test months per chunk. With `test_period_length = 12` (the default), hyperparameters are re-tuned once per year: the model is trained on data up to the first month in the chunk and then used to predict all months in that chunk. Setting `test_period_length = 1` re-tunes every month.
+
 ## Hyperparameter Tuning
 
 Our approach to selecting hyperparameters follows a two-stage procedure.

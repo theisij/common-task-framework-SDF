@@ -210,6 +210,7 @@ main <- function(chars, features, daily_ret) {
   es <- 25
   cores <- parallel::detectCores() - 4
   n_pfs <- 10
+  test_period_length <- 12  # months per chunk: 1 = tune every month, 12 = tune once/year
 
   # Convert to data.table
   chars <- as.data.table(chars)
@@ -246,12 +247,15 @@ main <- function(chars, features, daily_ret) {
   # Identify test dates
   test_dates <- chars[ctff_test == 1, sort(unique(eom_ret))]
 
-  # Loop over test dates
-  all_preds <- test_dates |> map(function(d) {
-    print(d)
+  # Group test dates into chunks of test_period_length months
+  test_chunks <- split(test_dates, ceiling(seq_along(test_dates) / test_period_length))
+
+  # Loop over chunks
+  all_preds <- test_chunks |> map(function(chunk_dates) {
+    d <- chunk_dates[1]  # training window ends before first date in chunk
     train_first <- d + 1 - months(1) - years(train_years) + months(1) - 1
     data_list <- list()
-    data_list$test <- chars[eom_ret == d]
+    data_list$test <- chars[eom_ret %in% chunk_dates]
     data_list$train <- chars[eom_ret >= train_first & eom_ret < d]
 
     fold_dates <- fold_dates_fun(test_date = d, train_years = train_years, folds = folds)
@@ -270,7 +274,7 @@ main <- function(chars, features, daily_ret) {
       eta1 = eta1,
       eta2 = eta2
     )
-  }, .progress = "XGB test dates") |> rbindlist()
+  }, .progress = "XGB test chunks") |> rbindlist()
 
   # Convert predictions to long-short portfolio weights
   # Need excntry for grouping — merge back from chars
