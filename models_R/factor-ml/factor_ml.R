@@ -49,10 +49,10 @@ fold_data_fun <- function(data, feat, fold_dates, y, i) {
   train_dates <- do.call(c, fold_dates[-i])
   val_dates <- fold_dates[[i]]
   train <- data[eom_ret %in% train_dates]
-  train <- xgb.DMatrix(data = as.matrix(train[, feat, with = F]),
+  train <- xgb.DMatrix(data = as.matrix(train[, feat, with = FALSE]),
                         label = train[[y]])
   val <- data[eom_ret %in% val_dates]
-  val <- xgb.DMatrix(data = as.matrix(val[, feat, with = F]),
+  val <- xgb.DMatrix(data = as.matrix(val[, feat, with = FALSE]),
                       label = val[[y]])
   return(list(train = train, val = val))
 }
