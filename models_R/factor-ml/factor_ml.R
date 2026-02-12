@@ -260,6 +260,7 @@ main <- function(chars, features, daily_ret) {
 
   # Loop over chunks
   all_preds <- test_chunks |> map(function(chunk_dates) {
+    cat(sprintf("Training model for test period %s to %s\n", min(chunk_dates), max(chunk_dates)))
     d <- chunk_dates[1]  # training window ends before first date in chunk
     train_first <- d + 1 - months(1) - years(train_years) + months(1) - 1
     data_list <- list()
