@@ -16,8 +16,12 @@ prepare_pred_data <- function(data, features, feat_prank, impute) {
     data[, (features) := lapply(.SD, function(x) {
       non_na <- !is.na(x)
       is_zero <- non_na & (x == 0)
+      # Use 1st percentile rather than minimum to detect lower-bound features,
+      # because a few rare negative outliers can appear even in conceptually
+      # non-negative features (e.g., div_me).
+      lb <- quantile(x, 0.01, na.rm = TRUE) == 0
       x[non_na] <- frank(x[non_na], ties.method = "max") / sum(non_na)
-      x[is_zero] <- 0
+      if (lb) x[is_zero] <- 0
       x - 0.5
     }), .SDcols = features, by = .(excntry, eom)]
   }
