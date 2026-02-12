@@ -124,6 +124,8 @@ search_best_fun <- function(search) {
     ) |>
     ungroup() |>
     filter(mse_avg == min(mse_avg))
+  # If multiple hyperparameter sets share the same minimum mse_avg,
+  # the first one in the current ordering is returned as the best set.
   agg[1, ]
 }
 
