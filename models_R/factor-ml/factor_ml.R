@@ -163,14 +163,14 @@ xgb_main <- function(data_list, fold_dates, feat, params_base, hp_grid,
   best_iter2 <- best_hp2$best_iter_avg
 
   # Re-fit to all training data
-  train_all <- xgb.DMatrix(data = as.matrix(data_list$train[, feat, with = F]),
+  train_all <- xgb.DMatrix(data = as.matrix(data_list$train[, feat, with = FALSE]),
                             label = data_list$train$ret_exc_lead1m)
   final_fit <- fit_xgb(train = train_all, val = train_all,
                         params_base = params_base, params = best_hp2,
                         iter = best_iter2, es = NULL, cores = cores, seed = seed)
 
   # Predictions
-  pred <- final_fit |> predict(newdata = data_list$test[, feat, with = F] |> as.matrix())
+  pred <- final_fit |> predict(newdata = data_list$test[, feat, with = FALSE] |> as.matrix())
   pred_op <- data_list$test[, .(id, eom, pred = drop(pred))]
   return(pred_op)
 }
