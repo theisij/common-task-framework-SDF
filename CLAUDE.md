@@ -81,8 +81,9 @@ The returned DataFrame must have columns: **id**, **eom** (end-of-month date), *
 - Package manager: uv
 
 ### R Environment
-- R installation: `C:/Program Files/R/R-4.4.0/bin/Rscript.exe`
+- R installation: `C:/Program Files/R/R-4.5.1/bin/x64/R.exe`
 - Renv library: `renv/library/`
 
-### R specific guidelines
+### Preferred R coding patterns
 - Always use the new pipe (`|>`) operator for chaining commands. Never the old pipe (`%>%`) operator.
+- For joins, use data.table's `X[Y, on = ...]` syntax instead of `merge()`. For a left join on `Y`, write `X[Y, on = .(key1, key2)]` rather than `merge(Y, X, by = c("key1", "key2"), all.x = TRUE)`.

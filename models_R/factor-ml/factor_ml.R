@@ -280,7 +280,7 @@ main <- function(chars, features, daily_ret) {
 
   # Convert predictions to long-short portfolio weights
   # Need excntry for grouping — merge back from chars
-  all_preds <- merge(all_preds, chars[, .(id, eom, excntry)], by = c("id", "eom"), all.x = TRUE)
+  all_preds <- chars[, .(id, eom, excntry)][all_preds, on = .(id, eom)]
   weights <- predictions_to_weights(all_preds, n_pfs = n_pfs)
 
   return(weights)
@@ -298,6 +298,5 @@ if (FALSE) {
   print(paste("Total rows:", nrow(pf)))
 
   # Save output
-  dir.create("data/processed/factor-ml", showWarnings = FALSE, recursive = TRUE)
-  fwrite(pf, "data/processed/factor-ml/factor_ml.csv")
+  pf |> fwrite("data/processed/factor_ml.csv")
 }
