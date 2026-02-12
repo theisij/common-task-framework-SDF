@@ -19,7 +19,9 @@ prepare_pred_data <- function(data, features, feat_prank, impute) {
       # Use 1st percentile rather than minimum to detect lower-bound features,
       # because a few rare negative outliers can appear even in conceptually
       # non-negative features (e.g., div_me).
-      lb <- quantile(x, 0.01, na.rm = TRUE) == 0
+      # isTRUE() needed because quantile() returns NA when all values are NA,
+      # making the == comparison NA rather than TRUE/FALSE.
+      lb <- isTRUE(quantile(x, 0.01, na.rm = TRUE) == 0)
       x[non_na] <- frank(x[non_na], ties.method = "max") / sum(non_na)
       if (lb) x[is_zero] <- 0
       x - 0.5
