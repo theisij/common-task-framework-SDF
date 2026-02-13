@@ -26,7 +26,7 @@ cat(sprintf("  Sampled %d features: %s\n", N_FEATURES, paste(sampled_features, c
 
 # ── Step 2: Read chars (only needed columns to avoid loading full 2.4 GB) ──
 cat("Reading chars (selected columns only)...\n")
-required_cols <- c("id", "eom", "eom_ret", "excntry", "ctff_test", "ret_exc_lead1m")
+required_cols <- c("id", "eom", "eom_ret", "excntry", "ctff_test", "ret_exc_lead1m", "sic")
 cols_to_read <- unique(c(required_cols, sampled_features))
 chars <- as.data.table(read_parquet("data/raw/ctff_chars.parquet",
                                      col_select = all_of(cols_to_read)))
@@ -92,14 +92,14 @@ cat(sprintf("  After stock filter: %s rows, %d unique stocks\n",
             format(nrow(chars), big.mark = ","),
             uniqueN(chars$id)))
 
-# ── Step 5: Create daily_ret placeholder ────────────────────────────────────
-# factor_ml.R accepts daily_ret but never uses it — create minimal placeholder
-daily_ret <- data.table(
-  id    = chars$id[1],
-  eom   = chars$eom[1],
-  date  = chars$eom[1],
-  ret_exc = 0.001
-)
+# ── Step 5: Create daily_ret from real data ──────────────────────────────────
+# Filter real daily returns to selected stock IDs and date range
+cat("Reading daily returns (filtered)...\n")
+daily_ret <- as.data.table(read_parquet("data/raw/ctff_daily_ret.parquet"))
+daily_ret <- daily_ret[id %in% selected_stocks & date >= train_start & date <= max(selected_test_dates)]
+cat(sprintf("  Daily returns: %s rows, %d unique stocks\n",
+            format(nrow(daily_ret), big.mark = ","),
+            uniqueN(daily_ret$id)))
 
 # ── Step 6: Save parquet files ──────────────────────────────────────────────
 cat("\nSaving parquet files...\n")
@@ -116,7 +116,7 @@ cat(sprintf("  ctff_chars.parquet: %s rows x %d cols\n",
 
 # Daily returns
 write_parquet(daily_ret, file.path(OUT_DIR, "ctff_daily_ret.parquet"))
-cat(sprintf("  ctff_daily_ret.parquet: %d rows (placeholder)\n", nrow(daily_ret)))
+cat(sprintf("  ctff_daily_ret.parquet: %s rows\n", format(nrow(daily_ret), big.mark = ",")))
 
 # ── Step 7: Print summary ──────────────────────────────────────────────────
 cat("\n")
