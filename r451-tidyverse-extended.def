@@ -1,0 +1,8 @@
+Bootstrap: docker
+From: rocker/tidyverse:4.5.1
+
+%post
+  apt-get update && apt-get install -y --no-install-recommends \
+      cmake build-essential pkg-config libssl-dev libmbedtls-dev \
+      libcurl4-openssl-dev ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*

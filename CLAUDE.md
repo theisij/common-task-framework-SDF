@@ -42,13 +42,17 @@ Input data consists of three parquet files in `data/raw/`:
 
 ### Model Contract
 
-Every Python model must expose a `main()` function with this signature:
+Every model (Python or R) must expose a `main()` function that takes `chars`, `features`, and `daily_ret` as inputs and returns a DataFrame with columns: **id**, **eom** (end-of-month date), **w** (portfolio weights). This is the format required for submission to the competition website.
 
+**Python:**
 ```python
 def main(chars: pd.DataFrame, features: pd.DataFrame, daily_ret: pd.DataFrame) -> pd.DataFrame:
 ```
 
-The returned DataFrame must have columns: **id**, **eom** (end-of-month date), **w** (portfolio weights). This is the format required for submission to the competition website.
+**R:**
+```r
+main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.table/tibble
+```
 
 ### Key Data Columns
 
@@ -70,7 +74,23 @@ The returned DataFrame must have columns: **id**, **eom** (end-of-month date), *
 - **Pandas** is used at the model interface boundary (input/output of `main()`)
 - `utils/data_prep.py` provides `impute_and_rank()` for percentile ranking and missing value imputation
 - `private/settings.py` uses Pydantic `BaseSettings` for configuration (env var prefixes: `COV_`, `APP_`)
+- **data.table** is the primary R DataFrame library for data manipulation
+- **xgboost** is used for gradient-boosted tree models in R
+- **arrow** is used for reading parquet files in R
 
 ### Directories Not in Git
 
 `data/` (raw, interim, processed, wrds), `output/` (figures, tables), and `private/` are gitignored.
+
+### Python Environment
+- Python installation: `c:\\Users\\tij2\\Dropbox\\Research\\Active projects\\CTF-github\\.venv\\Scripts\\python.exe`
+- Virtual environment: `.venv/`
+- Package manager: uv
+
+### R Environment
+- R installation: `C:/Program Files/R/R-4.5.1/bin/x64/R.exe`
+- Renv library: `renv/library/`
+
+### Preferred R coding patterns
+- Always use the new pipe (`|>`) operator for chaining commands. Never the old pipe (`%>%`) operator.
+- For joins, use data.table's `X[Y, on = ...]` syntax instead of `merge()`. For a left join on `Y`, write `X[Y, on = .(key1, key2)]` rather than `merge(Y, X, by = c("key1", "key2"), all.x = TRUE)`.
