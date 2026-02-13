@@ -16,14 +16,11 @@ prepare_pred_data <- function(data, features, feat_prank, impute) {
     data[, (features) := lapply(.SD, function(x) {
       non_na <- !is.na(x)
       is_zero <- non_na & (x == 0)
-      # Use 1st percentile rather than minimum to detect lower-bound features,
-      # because a few rare negative outliers can appear even in conceptually
-      # non-negative features (e.g., div_me).
-      # isTRUE() needed because quantile() returns NA when all values are NA,
-      # making the == comparison NA rather than TRUE/FALSE.
-      lb <- isTRUE(quantile(x, 0.01, na.rm = TRUE) == 0)
       x[non_na] <- frank(x[non_na], ties.method = "max") / sum(non_na)
-      if (lb) x[is_zero] <- 0
+      # Override zeros universally: while 0 may not literally be the lowest
+      # value for some variables (e.g., chcsho_12m), it gives XGBoost a
+      # consistent way to identify exact zeros, which is likely a special value.
+      x[is_zero] <- 0
       x - 0.5
     }), .SDcols = features, by = .(excntry, eom)]
   }
