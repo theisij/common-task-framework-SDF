@@ -126,8 +126,28 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
     factor_res <- data.table(id = sub$id, date = d, res = drop(residuals))
     list(factor_returns = factor_returns, factor_res = factor_res)
   }, .progress = "   Factor regression by date")
-  # Combine
-  factor_returns <- fct_regs |> map("factor_returns") |> rbindlist()
+  # Combine (fill=TRUE because some industries may have no stocks on certain days)
+  factor_returns <- fct_regs |> map("factor_returns") |> rbindlist(fill = TRUE)
+  # Impute missing factor returns: industry cols get median of non-missing industry
+  # returns that day, non-industry cols get median of non-missing feature returns
+  ind_cols <- intersect(c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
+                          "Money", "NoDur", "Other", "Shops", "Telcm", "Utils"),
+                        names(factor_returns))
+  feat_cols <- setdiff(names(factor_returns), c("date", ind_cols))
+  if (length(ind_cols) > 0) {
+    factor_returns[, (ind_cols) := {
+      vals <- unlist(.SD)
+      med <- median(vals, na.rm = TRUE)
+      lapply(.SD, function(x) fifelse(is.na(x), med, x))
+    }, .SDcols = ind_cols, by = date]
+  }
+  if (length(feat_cols) > 0) {
+    factor_returns[, (feat_cols) := {
+      vals <- unlist(.SD)
+      med <- median(vals, na.rm = TRUE)
+      lapply(.SD, function(x) fifelse(is.na(x), med, x))
+    }, .SDcols = feat_cols, by = date]
+  }
   factor_res <- fct_regs |> map("factor_res") |> rbindlist()
   list(factor_returns = factor_returns, factor_res = factor_res)
 }
