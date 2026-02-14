@@ -29,7 +29,7 @@ cat("\nAll toy-data tests passed!\n")
 if (FALSE) {
   chars <- read_parquet(file.path("data", "raw", "ctff_chars.parquet"),
                         col_select = c("id", "eom", "eom_ret", "ret_exc_lead1m"))
-  chars |> setnames(old = "ret_exc_lead1m", new = "r")
+  setnames(chars, old = "ret_exc_lead1m", new = "r")
   pf <- fread(file.path("data", "processed", "minimum_variance.csv"))
   pf <- chars[pf, on = .(id, eom)]
   if (any(is.na(pf$w))) stop("NA weights found in minimum_variance output")
@@ -38,14 +38,15 @@ if (FALSE) {
   pf <- pf[!is.na(r), .(
     ret = sum(w * r)
   ), by = .(eom, eom_ret)]
-  pf |> setorder(eom)
+  setorder(pf, eom)
   # Check Sharpe ratio
   pf[, .(
     ret = mean(ret) * 12,
     sd = sd(ret) * sqrt(12)
   )][, sr := ret / sd][]
   # Check cumulative returns
-  pf[, cumret := cumsum(ret)] |>
+  pf[, cumret := cumsum(ret)]
+  pf |>
     ggplot(aes(x = eom, y = cumret)) +
     geom_line() +
     labs(title = "Cumulative Returns of Minimum-Variance Portfolio",
