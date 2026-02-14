@@ -2,9 +2,13 @@
 # Consolidated from models_R/factor-ml-old/ (7-file pipeline)
 
 # Section 1: Libraries ---------------------------------------------------------
+# Using dplyr/purrr/lubridate instead of tidyverse to avoid ggplot2/ragg
+# dependencies that require system libraries not available in Docker.
 library(arrow)
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(purrr)
 library(xgboost)
 library(dials)
 
@@ -203,6 +207,9 @@ predictions_to_weights <- function(preds, n_pfs = 10) {
 
 # Section 6: Main Entry Point -------------------------------------------------
 main <- function(chars, features, daily_ret) {
+  start_time <- Sys.time()
+  cat("Starting main() execution\n")
+
   # Settings
   seed <- 1
   train_years <- 10
@@ -286,6 +293,12 @@ main <- function(chars, features, daily_ret) {
   # Need excntry for grouping — merge back from chars
   all_preds <- chars[, .(id, eom, excntry)][all_preds, on = .(id, eom)]
   weights <- predictions_to_weights(all_preds, n_pfs = n_pfs)
+
+  elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+  cat(sprintf("Completed main() in %.1f minutes\n", elapsed))
+  cat(sprintf("Output: %d rows, %d unique months, date range %s to %s\n",
+              nrow(weights), length(unique(weights$eom)),
+              min(weights$eom), max(weights$eom)))
 
   return(weights)
 }
