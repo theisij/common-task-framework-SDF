@@ -27,6 +27,9 @@ cat("\nAll toy-data tests passed!\n")
 
 # Phase 2: Validation on full output ──────────────────────────────────────────
 if (FALSE) {
+  library(data.table)
+  library(ggplot2)
+  library(arrow)
   chars <- read_parquet(file.path("data", "raw", "ctff_chars.parquet"),
                         col_select = c("id", "eom", "eom_ret", "ret_exc_lead1m"))
   setnames(chars, old = "ret_exc_lead1m", new = "r")
