@@ -154,19 +154,30 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
 
 # Section 4: Covariance Estimation ---------------------------------------------
 ewma_vol <- function(x, lambda, start) {
-  # Pure R EWMA volatility (replaces missing Rcpp ewma_c)
+  # Pure R EWMA volatility matching Rcpp ewma_c() exactly
   # x: vector of returns (or residuals)
   # lambda: decay factor, e.g. 0.5^(1/84)
   # start: number of initial observations to seed the variance
   n <- length(x)
   result <- rep(NA_real_, n)
   if (n <= start) return(result)
-  # Seed variance from first `start` observations
-  var_t <- mean(x[1:start]^2)
-  result[start] <- sqrt(var_t)
-  for (t in (start + 1):n) {
-    var_t <- lambda * var_t + (1 - lambda) * x[t]^2
-    result[t] <- sqrt(var_t)
+  # Seed variance from first `start` observations (Bessel correction, skip NAs)
+  x_init <- x[1:start]
+  non_na <- !is.na(x_init)
+  var_t <- sum(x_init[non_na]^2) / (sum(non_na) - 1)
+  # Seed goes at index start+1 (0-indexed start in C++ = 1-indexed start+1 in R)
+  result[start + 1] <- sqrt(var_t)
+  # EWMA update uses the PREVIOUS observation x[t-1], not x[t]
+  if ((start + 2) <= n) {
+    for (t in (start + 2):n) {
+      if (is.na(x[t - 1])) {
+        # Carry forward previous variance on NA
+        result[t] <- result[t - 1]
+      } else {
+        var_t <- lambda * var_t + (1 - lambda) * x[t - 1]^2
+        result[t] <- sqrt(var_t)
+      }
+    }
   }
   return(result)
 }
