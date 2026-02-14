@@ -14,7 +14,11 @@ prepare_pred_data <- function(data, features, feat_prank, impute) {
     cat(sprintf("Percentile-ranking %d features...\n", length(features)))
     data[, (features) := lapply(.SD, function(x) {
       non_na <- !is.na(x)
+      # Require at least 10 non-missing observations to rank (necessary to
+      # estimate the associated factor return in the cross-sectional regression)
+      if (sum(non_na) < 10) return(rep(NA_real_, length(x)))
       is_zero <- non_na & (x == 0)
+      # frank(ties.method="max")/n is equivalent to ecdf() used in old code
       x[non_na] <- frank(x[non_na], ties.method = "max") / sum(non_na)
       x[is_zero] <- 0
       x - 0.5
@@ -138,6 +142,7 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
     factor_returns[, (ind_cols) := {
       vals <- unlist(.SD)
       med <- median(vals, na.rm = TRUE)
+      if (is.na(med)) med <- 0  # Fallback if all values in category are NA
       lapply(.SD, function(x) fifelse(is.na(x), med, x))
     }, .SDcols = ind_cols, by = date]
   }
@@ -145,6 +150,7 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
     factor_returns[, (feat_cols) := {
       vals <- unlist(.SD)
       med <- median(vals, na.rm = TRUE)
+      if (is.na(med)) med <- 0  # Fallback if all values in category are NA
       lapply(.SD, function(x) fifelse(is.na(x), med, x))
     }, .SDcols = feat_cols, by = date]
   }
@@ -257,11 +263,20 @@ woodbury_solve <- function(D_diag, Sigma_f, X, b) {
   # Only inverts K x K matrix (factors) instead of N x N (stocks)
   D_inv_b <- b / D_diag
   D_inv_X <- X / D_diag  # N x K, each row of X divided by corresponding D_diag element
-  # Force symmetry on Sigma_f before inverting
+  # Check and force symmetry on Sigma_f before inverting
+  asym_Sf <- max(abs(Sigma_f - t(Sigma_f)))
+  if (!is.finite(asym_Sf) || asym_Sf > 1e-6) {
+    warning(sprintf("Sigma_f asymmetry: %.2e (forcing symmetric)", asym_Sf))
+  }
   Sigma_f <- (Sigma_f + t(Sigma_f)) / 2
   Sf_inv <- solve(Sigma_f)
   M <- Sf_inv + t(X) %*% D_inv_X  # K x K
-  M <- (M + t(M)) / 2  # Force symmetry
+  # Check and force symmetry on M
+  asym_M <- max(abs(M - t(M)))
+  if (!is.finite(asym_M) || asym_M > 1e-6) {
+    warning(sprintf("M asymmetry: %.2e (forcing symmetric)", asym_M))
+  }
+  M <- (M + t(M)) / 2
   M_inv <- solve(M)
   # Woodbury: D_inv_b - D_inv_X %*% M_inv %*% (X' D_inv_b)
   D_inv_b - D_inv_X %*% (M_inv %*% (t(X) %*% D_inv_b))
@@ -380,6 +395,10 @@ main <- function(chars, features, daily_ret) {
   weights <- test_dates |> map(function(d) {
     factor_cov_d <- factor_cov[[as.character(d)]]
     factor_chars_sub <- factor_chars[eom == d & !is.na(res_vol)]
+    if (nrow(factor_chars_sub) == 0L) {
+      warning(sprintf("No stocks with res_vol for %s, skipping", d))
+      return(data.table(id = integer(), eom = as.Date(character()), w = numeric()))
+    }
     compute_min_var_weights(factor_cov_d, factor_chars_sub, x_vars)
   }, .progress = "   Min-var portfolios by date") |> rbindlist()
 
