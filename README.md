@@ -1,6 +1,6 @@
 ## Overview
 
-Repository for the Common Task Framework (CTF) competition associated with the paper "The Power of the Common Task Framework" by Hellum, Jensen, Kelly, and Pedersen (2025), where the goal is to find the stochastic discount factor, or more precisely, the portfolio with the highest Sharpe ratio. The goal of this repo is to contain all benchmark models from the CTF paper. The repo is still work-in-progress.
+Repository for the Common Task Framework (CTF) competition associated with the paper ["The Power of the Common Task Framework"](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5242901) by Hellum, Jensen, Kelly, and Pedersen (2025), where the goal is to find the stochastic discount factor, or more precisely, the portfolio with the highest Sharpe ratio. The goal of this repo is to contain all benchmark models from the CTF paper. The repo is still work-in-progress.
 
 - **Submit a model:** [jkpfactors.com/ctf/submit](https://jkpfactors.com/ctf/submit)
 - **Competition rules:** [jkpfactors.com/ctf/rules](https://jkpfactors.com/ctf/rules)
