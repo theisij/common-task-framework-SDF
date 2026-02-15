@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -J minimum-variance
-#SBATCH -o slurm/output_minimum-variance.txt
-#SBATCH -e slurm/error_minimum-variance.txt
+#SBATCH -J markowitz-ml
+#SBATCH -o slurm/output_markowitz-ml.txt
+#SBATCH -e slurm/error_markowitz-ml.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=300G
@@ -40,16 +40,16 @@ apptainer exec -B "$PWD" "$IMAGE" \
   R -q -e "renv::restore(prompt=FALSE)"
 
 # Build standalone file (inlines source() calls)
-echo "[build] Building standalone minimum_variance..."
+echo "[build] Building standalone markowitz_ml..."
 apptainer exec -B "$PWD" "$IMAGE" \
-  Rscript scripts/build_model.R models_R/minimum-variance/minimum_variance.R
+  Rscript scripts/build_model.R models_R/markowitz-ml/markowitz_ml.R
 
-# Run minimum_variance
-echo "[run] Running minimum_variance..."
+# Run markowitz_ml
+echo "[run] Running markowitz_ml..."
 START_TIME=$(date +%s)
 apptainer exec -B "$PWD" "$IMAGE" \
   Rscript -e '
-source("models_R/minimum-variance/minimum_variance_standalone.R")
+source("models_R/markowitz-ml/markowitz_ml_standalone.R")
 
 features  <- arrow::read_parquet("data/raw/ctff_features.parquet")
 chars     <- arrow::read_parquet("data/raw/ctff_chars.parquet")
@@ -61,7 +61,7 @@ print(head(pf))
 print(paste("Unique months:", length(unique(pf$eom))))
 print(paste("Total rows:", nrow(pf)))
 
-data.table::fwrite(pf, "data/processed/minimum_variance.csv")
+data.table::fwrite(pf, "data/processed/markowitz_ml.csv")
 '
 
 END_TIME=$(date +%s)
