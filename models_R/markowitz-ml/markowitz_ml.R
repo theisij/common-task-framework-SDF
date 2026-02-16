@@ -57,7 +57,7 @@ main <- function(chars, features, daily_ret) {
   eta1 <- 0.15
   eta2 <- 0.01
   es <- 25
-  cores <- min(parallel::detectCores() - 4, 16) |> max(1)  # Setting fixed upper bound for reproducibility
+  cores <- max(1, parallel::detectCores() - 4)
   test_period_length <- 12
 
   # ── Factor model settings ──
