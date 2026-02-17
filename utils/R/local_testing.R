@@ -14,9 +14,9 @@ library(arrow)
 #' @return The portfolio data.table for any additional model-specific checks
 run_toy_tests <- function(model_path) {
   source(model_path, echo = TRUE)
-  features  <- read_parquet("data/interim/ctff_features.parquet")
-  chars     <- read_parquet("data/interim/ctff_chars.parquet")
-  daily_ret <- read_parquet("data/interim/ctff_daily_ret.parquet")
+  features  <- read_parquet("data/interim/toy_ctff_features.parquet")
+  chars     <- read_parquet("data/interim/toy_ctff_chars.parquet")
+  daily_ret <- read_parquet("data/interim/toy_ctff_daily_ret.parquet")
   pf <- main(chars = chars, features = features, daily_ret = daily_ret)
 
   # Check: output has expected columns

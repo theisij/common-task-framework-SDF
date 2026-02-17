@@ -106,16 +106,16 @@ cat("\nSaving parquet files...\n")
 
 # Features
 features_out <- data.table(features = sampled_features)
-write_parquet(features_out, file.path(OUT_DIR, "ctff_features.parquet"))
+write_parquet(features_out, file.path(OUT_DIR, "toy_ctff_features.parquet"))
 cat(sprintf("  ctff_features.parquet: %d rows\n", nrow(features_out)))
 
 # Chars
-write_parquet(chars, file.path(OUT_DIR, "ctff_chars.parquet"))
+write_parquet(chars, file.path(OUT_DIR, "toy_ctff_chars.parquet"))
 cat(sprintf("  ctff_chars.parquet: %s rows x %d cols\n",
             format(nrow(chars), big.mark = ","), ncol(chars)))
 
 # Daily returns
-write_parquet(daily_ret, file.path(OUT_DIR, "ctff_daily_ret.parquet"))
+write_parquet(daily_ret, file.path(OUT_DIR, "toy_ctff_daily_ret.parquet"))
 cat(sprintf("  ctff_daily_ret.parquet: %s rows\n", format(nrow(daily_ret), big.mark = ",")))
 
 # ── Step 7: Print summary ──────────────────────────────────────────────────
@@ -134,8 +134,8 @@ cat(sprintf("  Total rows:     %s\n", format(nrow(chars), big.mark = ",")))
 cat("\n")
 cat("  Usage:\n")
 cat("    source(\"models_R/factor-ml/factor_ml.R\")\n")
-cat("    features  <- arrow::read_parquet(\"data/interim/ctff_features.parquet\")\n")
-cat("    chars     <- arrow::read_parquet(\"data/interim/ctff_chars.parquet\")\n")
-cat("    daily_ret <- arrow::read_parquet(\"data/interim/ctff_daily_ret.parquet\")\n")
+cat("    features  <- arrow::read_parquet(\"data/interim/toy_ctff_features.parquet\")\n")
+cat("    chars     <- arrow::read_parquet(\"data/interim/toy_ctff_chars.parquet\")\n")
+cat("    daily_ret <- arrow::read_parquet(\"data/interim/toy_ctff_daily_ret.parquet\")\n")
 cat("    pf <- main(chars = chars, features = features, daily_ret = daily_ret)\n")
 cat("═══════════════════════════════════════════════════════════\n")
