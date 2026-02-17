@@ -25,7 +25,13 @@ uv run python models_python/one_over_n/one_over_N.py
 uv run python scripts/data_prep.py
 ```
 
-R models (e.g., `models_R/KNS/kns_pc.R`) are run directly in R.
+R models `source()` shared utilities from `utils/R/` and are run directly in R. For HPC submission, `scripts/build_model.R` inlines all `source()` calls into a single `*_standalone.R` file. The SLURM scripts handle this automatically:
+
+```bash
+# Build standalone (inlines source() calls) then run
+Rscript scripts/build_model.R models_R/markowitz-ml/markowitz_ml.R
+Rscript -e 'source("models_R/markowitz-ml/markowitz_ml_standalone.R"); ...'
+```
 
 ## Architecture
 
@@ -65,8 +71,11 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 ### Adding a New Model
 
 1. Save the script in a folder under `models_python/` or `models_R/`
-2. Save CSV output under `data/processed/{model_name}/`
-3. Save documentation under `documentation/{model_name}/`
+2. For R models, `source()` shared utilities from `utils/R/` as needed (e.g., `data_prep.R`, `factor_model_utils.R`, `xgb_utils.R`)
+3. Add a `*_testing.R` file that sources `utils/R/local_testing.R` and calls `run_toy_tests()` / `validate_portfolio()`
+4. Add a SLURM script that calls `scripts/build_model.R` to generate a standalone file before running the model
+5. Save CSV output under `data/processed/{model_name}/`
+6. Save documentation under `documentation/{model_name}/`
 
 ### Key Libraries
 
@@ -77,6 +86,11 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 - **data.table** is the primary R DataFrame library for data manipulation
 - **xgboost** is used for gradient-boosted tree models in R
 - **arrow** is used for reading parquet files in R
+- `utils/R/data_prep.R` provides `impute_and_rank()` for R models
+- `utils/R/factor_model_utils.R` provides Barra factor model helpers (regressions, covariance estimation)
+- `utils/R/xgb_utils.R` provides XGBoost hyperparameter tuning and training helpers
+- `utils/R/local_testing.R` provides `run_toy_tests()` and `validate_portfolio()` for model validation
+- `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission
 
 ### Directories Not in Git
 
