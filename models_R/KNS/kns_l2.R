@@ -276,7 +276,7 @@ main <- function(chars, features, daily_ret) {
   pf_dates <- unique(subset(chars_normalized, ctff_test == TRUE)$eom_ret)
 
   l2s <- 10^seq(-10, 0, 0.1)
-  l1s <- 10^seq(-10, 4, 0.1)
+  l1s <- c()
   n_folds <- 5
 
   print("Optimal Lambdas")
@@ -285,25 +285,25 @@ main <- function(chars, features, daily_ret) {
   opt_lambdas <- pf_dates |>
     # map(.progress = TRUE, function(d) {
     future_map(.progress = TRUE, function(d) {
-      calc_opt_lambdas(d, rw_daily, mkt_rets_daily, features, n_folds, l2s, l1s, use_pc=TRUE)
+      calc_opt_lambdas(d, rw_daily, mkt_rets_daily, features, n_folds, l2s, l1s, use_pc=FALSE)
     # }) |>
     }, .options = furrr_options(packages = c("data.table", "tidyverse"))) |>
     rbindlist() |>
     setDT()
-  write_parquet(opt_lambdas, "data/interim/opt_lambdas_pc.parquet")
+  write_parquet(opt_lambdas, "data/interim/opt_lambdas_l2.parquet")
 
   print("Optimal PF")
   w_kns <- pf_dates |>
     # map(.progress = TRUE, function(d) {
     future_map(.progress = TRUE, function(d) {
-      kns(d, rw_daily, mkt_rets_daily, features, opt_lambdas, use_pc=TRUE)
+      kns(d, rw_daily, mkt_rets_daily, features, opt_lambdas, use_pc=FALSE)
     # }) |>
     }, .options = furrr_options(packages = c("data.table", "tidyverse"))) |>
     rbindlist() |>
     setDT()
-  write_parquet(w_kns, "data/interim/w_kns_pc.parquet")
+  write_parquet(w_kns, "data/interim/w_kns_l2.parquet")
   
-  # w_kns_pc <- read_parquet("data/interim/w_kns_pc.parquet")
+  # w_kns <- read_parquet("data/interim/w_kns_l2.parquet")
 
   test_chars <- chars_normalized |>
     filter(ctff_test == TRUE) |>
@@ -329,11 +329,11 @@ main <- function(chars, features, daily_ret) {
 }
 
 
-if (FALSE) {
+if (interactive()) {
   features <- read_parquet("data/raw/ctff_features.parquet") |> pull(features)
   chars <- read_parquet("data/raw/ctff_chars.parquet")
   daily_ret <- read_parquet("data/raw/ctff_daily_ret.parquet")
   
   pf <- chars |> main(daily_ret=daily_ret, features=features)
-  pf |> fwrite("data/processed/kns_pc.csv")
+  pf |> fwrite("data/processed/kns_l2.csv")
 }
