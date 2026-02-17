@@ -329,7 +329,7 @@ main <- function(chars, features, daily_ret) {
 }
 
 
-if (interactive()) {
+if (FALSE) {
   features <- read_parquet("data/raw/ctff_features.parquet") |> pull(features)
   chars <- read_parquet("data/raw/ctff_chars.parquet")
   daily_ret <- read_parquet("data/raw/ctff_daily_ret.parquet")
