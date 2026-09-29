@@ -71,7 +71,8 @@ xgb_hp_search <- function(train, val, feat, params_base, hp_grid,
       r2 = 1 - val_mse / mean((val_y - mean(val_y))^2),
       r2_zero = 1 - val_mse / mean(val_y^2),
       r2_oos = 1 - val_mse / mean((val_y - train_mean)^2),
-      best_iter = as.integer(xgb.attr(xgb_fit, "best_iteration"))
+      # xgboost >= 2 stores best_iteration 0-based; +1 gives the number of trees
+      best_iter = as.integer(xgb.attr(xgb_fit, "best_iteration")) + 1L
     )
     if (print) print(stats)
     cbind(hps, stats)
