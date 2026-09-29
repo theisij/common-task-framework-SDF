@@ -224,7 +224,9 @@ main <- function(chars, features, daily_ret) {
   eta1 <- 0.15
   eta2 <- 0.01
   es <- 25
-  cores <- max(1, parallel::detectCores() - 4)
+  # Use the CPUs allocated by SLURM (detectCores() counts the whole node)
+  cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4)))
+  cat(sprintf("XGBoost threads: %d\n", cores))
   n_pfs <- 10
   test_period_length <- 12  # months per chunk: 1 = tune every month, 12 = tune once/year
 
