@@ -2,10 +2,11 @@
 # check_submission.R — Check a model's submission files against the CTF rules
 #
 # Usage:
-#   Rscript scripts/check_submission.R models_R/markowitz-ml
+#   Rscript scripts/check_submission.R models_R/markowitz-ml            # full check
+#   Rscript scripts/check_submission.R models_R/markowitz-ml --static   # skip the weights CSV
 #
-# Checks {model}_standalone.R, the model's renv.lock and, if present,
-# data/processed/{model}.csv. Exits with an error if any check fails.
+# Checks {model}_standalone.R, the model's renv.lock and data/processed/{model}.csv
+# (a required submission file). Exits with an error if any check fails.
 # See docs/ctf_rules.md for the rules referenced below.
 
 suppressMessages({
@@ -15,7 +16,9 @@ suppressMessages({
 source("scripts/submission_utils.R")
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) stop("Usage: Rscript scripts/check_submission.R <model_dir>")
+static_only <- "--static" %in% args
+args <- setdiff(args, "--static")
+if (length(args) != 1) stop("Usage: Rscript scripts/check_submission.R <model_dir> [--static]")
 model_dir <- args[1]
 script <- list.files(model_dir, pattern = "_standalone\\.R$", full.names = TRUE)
 if (length(script) != 1) stop(sprintf("Expected one *_standalone.R in %s; run scripts/build_model.R first", model_dir))
@@ -70,8 +73,9 @@ if (file.exists(lock_file)) {
         paste(intersect(names(locked), CTF_FORBIDDEN_PKGS), collapse = ", "))
   not_cran <- names(locked)[sapply(locked, function(p) !identical(p$Source, "Repository"))]
   check(length(not_cran) == 0, "Rule 4: all locked packages come from a CRAN repository", paste(not_cran, collapse = ", "))
-  r_req <- sapply(names(locked), function(p) {
-    dep <- tryCatch(packageDescription(p)$Depends, error = function(e) NULL)
+  # R requirement of each locked version, from the Depends field recorded in the lock file
+  r_req <- sapply(locked, function(p) {
+    dep <- paste(unlist(p$Depends), collapse = ", ")
     m <- regmatches(dep, regexpr("R \\(>= *[0-9.]+\\)", dep))
     if (length(m) == 1) sub("R \\(>= *([0-9.]+)\\)", "\\1", m) else "0.0"
   })
@@ -81,8 +85,12 @@ if (file.exists(lock_file)) {
   check(file.size(lock_file) < 1e6, "Rule 13: renv.lock under 1 MB")
 }
 
-# Rules 5, 12: output weights (if the model has been run)
-if (file.exists(csv_file)) {
+# Rules 5, 12: output weights (a required submission file)
+if (static_only) {
+  cat(sprintf("SKIP  output checks (--static): %s not checked\n", csv_file))
+} else if (!file.exists(csv_file)) {
+  check(FALSE, "Rule 5: weights CSV exists", sprintf("%s not found (run the model, or use --static)", csv_file))
+} else {
   out <- fread(csv_file)
   check(identical(names(out), c("id", "eom", "w")), "Rule 12: columns are exactly id, eom, w", paste(names(out), collapse = ", "))
   check(nrow(out) > 0, "Rule 12: output is non-empty")
@@ -96,8 +104,6 @@ if (file.exists(csv_file)) {
   test <- as.data.table(read_parquet("data/raw/ctff_chars.parquet", col_select = c("id", "eom", "ctff_test")))[ctff_test == TRUE, .(id, eom)]
   n_miss <- nrow(test[!out, on = .(id, eom)])
   check(n_miss == 0, "Rule 5: weights for every ctff_test observation", sprintf("%d missing", n_miss))
-} else {
-  cat(sprintf("SKIP  output checks: %s not found (run the model first)\n", csv_file))
 }
 
 cat("\n")

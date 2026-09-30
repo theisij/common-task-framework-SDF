@@ -34,9 +34,10 @@ run_toy_tests <- function(model_path) {
   stopifnot(is.integer(pf$id), inherits(pf$eom, "Date"), is.double(pf$w))
   stopifnot(nrow(pf) > 0, !anyNA(pf), !any(duplicated(pf[, .(id, eom)])))
   cat("PASS: output is non-empty id (integer), eom (Date), w (double), no NAs or duplicates\n")
-  test_eoms <- chars[ctff_test == 1, sort(unique(eom))]
-  stopifnot(setequal(unique(pf$eom), test_eoms))
-  cat("PASS: weights for every test month\n")
+  test_rows <- chars[ctff_test == 1, .(id, eom)]
+  test_eoms <- sort(unique(test_rows$eom))
+  stopifnot(nrow(test_rows[!pf, on = .(id, eom)]) == 0, nrow(pf[!test_rows, on = .(id, eom)]) == 0)
+  cat("PASS: a weight for every ctff_test observation (id, eom), and nothing else\n")
 
   # Non-zero exposure per month
   stopifnot(all(pf[, sum(abs(w)) > 0, by = eom]$V1))

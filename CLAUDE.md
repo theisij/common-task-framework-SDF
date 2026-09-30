@@ -17,7 +17,7 @@ The full rules are in [`docs/ctf_rules.md`](docs/ctf_rules.md) (a copy of https:
 
 **No lookahead (Rule 1).**
 - Weights at `t` may use only data available at `t`. The CTF reruns each model on data with later months removed and flags any change in earlier weights.
-- Don't let full-sample quantities, such as the set of industries, sample-wide ranks or normalizations, or test-period statistics, leak into earlier months.
+- Don't let full-sample quantities, such as sample-wide ranks, normalizations or test-period statistics, leak into earlier months. (Including a factor that only has exposures in later months is harmless: the toy lookahead test covers this, with weights equal to machine precision.)
 - `ctff_test` defines the test set; never hard-code dates.
 
 **Determinism (Rule 18).**
@@ -121,9 +121,9 @@ See "CTF Competition Rules" above for the full output contract.
 
 **Pre-submission checklist** (all must pass before anything is sent to the CTF):
 1. `Rscript scripts/build_model.R models_R/<model>/<model>.R`: standalone file plus `renv.lock`; the build stops if forbidden packages are loaded
-2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing). The tests check the output contract, determinism (two runs) and lookahead (a run with the last test month removed must leave earlier weights unchanged)
+2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing, one industry appearing only in the last test month). The tests check the output contract, determinism (two runs) and lookahead (a run with the last test month removed must leave earlier weights unchanged)
 3. Full run on the HPC (SLURM), then `validate_portfolio()` and the documentation's performance statistics
-4. `Rscript scripts/check_submission.R models_R/<model>`: the static rule checks (size, UTF-8, `main` signature, prohibited code, lock file coverage, R 4.4.2 compatibility, output schema and coverage)
+4. `Rscript scripts/check_submission.R models_R/<model>`: the rule checks (size, UTF-8, `main` signature, prohibited code, lock file coverage, R 4.4.2 compatibility of the locked versions, output schema and coverage; a missing weights CSV fails unless `--static` is given)
 
 ### Key Libraries
 
