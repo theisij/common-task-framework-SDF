@@ -75,7 +75,7 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 3. Add a `*_testing.R` file that sources `utils/R/local_testing.R` and calls `run_toy_tests()` / `validate_portfolio()`
 4. Add a SLURM script that calls `scripts/build_model.R` to generate a standalone file before running the model
 5. Save CSV output under `data/processed/{model_name}/`
-6. Save documentation under `documentation/{model_name}/`
+6. Save documentation under `documentation/{model_name}/`, including a Performance section that includes `performance_stats.md` and `cumulative_returns.pdf` (add the model to `scripts/performance_stats.R` and run it to generate them)
 
 ### Key Libraries
 
@@ -91,6 +91,7 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 - `utils/R/xgb_utils.R` provides XGBoost hyperparameter tuning and training helpers
 - `utils/R/local_testing.R` provides `run_toy_tests()` and `validate_portfolio()` for model validation
 - `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission
+- `utils/R/performance_stats.R` provides `perf_stats()` (mean, SD, Sharpe ratio, gross leverage, turnover, maximum drawdown); `scripts/performance_stats.R` writes each model's documentation table and cumulative-return figure
 
 ### Directories Not in Git
 

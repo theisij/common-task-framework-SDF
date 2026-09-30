@@ -83,6 +83,20 @@ The raw weights are then rescaled to target an annualized volatility of 10%:
 $$
 w_t = w_t^{\text{raw}} \cdot \sqrt{\frac{\sigma^2_{\text{target}} / 12}{w_t^{\text{raw}\prime} \hat{\Sigma}_t^{\text{monthly}} w_t^{\text{raw}}}},
 $$
-where $\sigma_{\text{target}} = 0.10$ and $\hat{\Sigma}_t^{\text{monthly}} = 21 \cdot \hat{\Sigma}_t$ converts the daily covariance matrix to a monthly frequency. In practice, the realized volatility of the portfolio substantially exceeds the target because mean-variance optimization amplifies estimation error in  the covariance matrix, concentrating weights on stocks whose risk is underestimated. 
+where $\sigma_{\text{target}} = 0.10$ and $\hat{\Sigma}_t^{\text{monthly}} = 21 \cdot \hat{\Sigma}_t$ converts the daily covariance matrix to a monthly frequency. In practice, the realized volatility of the portfolio (15.8% over the test period; see @tbl-perf) exceeds the 10% target. Mean-variance optimization amplifies estimation error in the inputs, tilting the portfolio toward positions whose risk is underestimated, so the ex-ante volatility understates the realized volatility.
+
+# Performance
+
+@tbl-perf reports the out-of-sample performance of the portfolio on the CTF test set (U.S. stocks). Portfolios are formed at the end of each month from December 1989 to November 2023, and returns are the realized excess returns over the following month. The statistics are computed with `scripts/performance_stats.R` from the model output.
+
+::: {#tbl-perf}
+{{< include performance_stats.md >}}
+
+Out-of-sample performance statistics.
+:::
+
+Gross leverage is the sum of the absolute portfolio weights, averaged over months. Turnover in month $t$ is $\sum_i \lvert w_{i,t} - \tilde{w}_{i,t} \rvert$, where $\tilde{w}_{i,t} = w_{i,t-1}(1 + r_{i,t}) / (1 + r_{p,t})$ are last month's weights after they drift with realized returns; stocks entering or leaving the portfolio count in full. The maximum drawdown is the largest peak-to-trough decline of the compounded portfolio return. Because the average return, standard deviation, and drawdown depend on the scale of the portfolio weights, the last row also reports the maximum drawdown after scaling the portfolio returns to an annualized volatility of 10%, which makes it comparable across models. @fig-cumret shows the cumulative return.
+
+![Cumulative excess return (sum of monthly returns) over the test period.](cumulative_returns.pdf){#fig-cumret}
 
 # References
