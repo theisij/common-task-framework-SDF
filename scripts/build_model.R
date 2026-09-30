@@ -88,7 +88,7 @@ cat(sprintf("Standalone file written to: %s\n", output_file))
 
 # Verify no source() calls remain
 remaining <- grep('^\\s*source\\(', final, value = TRUE)
-# Filter out source() inside if(FALSE) blocks — those are fine
+# Note: this also flags source() calls inside disabled if (FALSE) blocks; check those by hand
 if (length(remaining) > 0) {
   warning(sprintf("WARNING: %d source() call(s) remain in output:\n  %s",
                   length(remaining), paste(remaining, collapse = "\n  ")))

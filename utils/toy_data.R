@@ -107,16 +107,16 @@ cat("\nSaving parquet files...\n")
 # Features
 features_out <- data.table(features = sampled_features)
 write_parquet(features_out, file.path(OUT_DIR, "toy_ctff_features.parquet"))
-cat(sprintf("  ctff_features.parquet: %d rows\n", nrow(features_out)))
+cat(sprintf("  toy_ctff_features.parquet: %d rows\n", nrow(features_out)))
 
 # Chars
 write_parquet(chars, file.path(OUT_DIR, "toy_ctff_chars.parquet"))
-cat(sprintf("  ctff_chars.parquet: %s rows x %d cols\n",
+cat(sprintf("  toy_ctff_chars.parquet: %s rows x %d cols\n",
             format(nrow(chars), big.mark = ","), ncol(chars)))
 
 # Daily returns
 write_parquet(daily_ret, file.path(OUT_DIR, "toy_ctff_daily_ret.parquet"))
-cat(sprintf("  ctff_daily_ret.parquet: %s rows\n", format(nrow(daily_ret), big.mark = ",")))
+cat(sprintf("  toy_ctff_daily_ret.parquet: %s rows\n", format(nrow(daily_ret), big.mark = ",")))
 
 # ── Step 7: Print summary ──────────────────────────────────────────────────
 cat("\n")

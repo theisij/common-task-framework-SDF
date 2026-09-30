@@ -7,7 +7,14 @@
 #' @param rets data.table with id, eom, r (excess return from eom to the next month end)
 #' @return data.table with eom, ret (portfolio excess return over the following month)
 pf_returns <- function(pf, rets) {
-  rets[pf, on = .(id, eom)][, .(ret = sum(w * r, na.rm = TRUE)), by = eom][order(eom)]
+  check_returns(pf, rets)
+  rets[pf, on = .(id, eom)][, .(ret = sum(w * r)), by = eom][order(eom)]
+}
+
+#' Stop if any held position lacks a realized return (as validate_portfolio() does)
+check_returns <- function(pf, rets) {
+  n_miss <- rets[pf[w != 0], on = .(id, eom)][, sum(is.na(r))]
+  if (n_miss > 0) stop(sprintf("%d held positions have no realized return", n_miss))
 }
 
 #' Maximum drawdown of compounded returns
@@ -22,9 +29,9 @@ max_drawdown <- function(ret) {
 #' weights after drifting with realized returns: w~_i = w_{i,t-1} (1 + r_i) / (1 + R_p).
 #' Stocks entering or leaving the portfolio count in full.
 pf_turnover <- function(pf, rets) {
+  check_returns(pf, rets)
   eoms <- sort(unique(pf$eom))
-  prev <- rets[pf, on = .(id, eom)]
-  prev[, r := fifelse(is.na(r), 0, r)]
+  prev <- rets[pf[w != 0], on = .(id, eom)]
   prev[, w_drift := w * (1 + r) / (1 + sum(w * r)), by = eom]
   prev[, eom := eoms[match(eom, eoms) + 1L]]  # drifted weights apply to the next rebalancing date
   prev <- prev[!is.na(eom), .(id, eom, w_drift)]
@@ -49,7 +56,7 @@ perf_stats <- function(pf, rets, vol_scale = 0.10) {
     mean = mean_ann,
     sd = sd_ann,
     sharpe = mean_ann / sd_ann,
-    avg_stocks = pf[, .N, by = eom][, mean(N)],
+    avg_stocks = pf[, .(n = sum(w != 0)), by = eom][, mean(n)],  # holdings, not rows (Factor-ML keeps zero weights)
     gross_leverage = pf[, sum(abs(w)), by = eom][, mean(V1)],
     turnover = pf_turnover(pf, rets),
     max_dd = max_drawdown(ts$ret),
