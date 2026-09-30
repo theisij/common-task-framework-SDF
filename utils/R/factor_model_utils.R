@@ -94,8 +94,13 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
     factor_res <- data.table(id = sub$id, date = d, res = drop(residuals))
     list(factor_returns = factor_returns, factor_res = factor_res)
   }, .progress = "   Factor regression by date")
-  # Combine (fill=TRUE because some industries may have no stocks on certain days)
+  # Combine (fill=TRUE because some industries may have no stocks on certain days).
+  # fill=TRUE appends columns absent from the first day at the end, so the column
+  # order is restored to x_vars below (X and Sigma_f must share the same order)
   factor_returns <- fct_regs |> map("factor_returns") |> rbindlist(fill = TRUE)
+  x_vars <- x_vars_fun(factors = factors, ind = ind)
+  missing_cols <- setdiff(x_vars, names(factor_returns))
+  if (length(missing_cols) > 0) factor_returns[, (missing_cols) := NA_real_]
   # Impute missing factor returns: industry cols get median of non-missing industry
   # returns that day, non-industry cols get median of non-missing feature returns
   ind_cols <- intersect(c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
@@ -118,6 +123,7 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
       lapply(.SD, function(x) fifelse(is.na(x), med, x))
     }, .SDcols = feat_cols, by = date]
   }
+  setcolorder(factor_returns, c("date", x_vars))
   factor_res <- fct_regs |> map("factor_res") |> rbindlist()
   list(factor_returns = factor_returns, factor_res = factor_res)
 }
@@ -223,6 +229,11 @@ woodbury_solve <- function(D_diag, Sigma_f, X, b) {
   # Solve (D + X Sigma_f X')^{-1} b using the Woodbury identity:
   # (D + X Sf X')^{-1} = D^{-1} - D^{-1} X (Sf^{-1} + X' D^{-1} X)^{-1} X' D^{-1}
   # Only inverts K x K matrix (factors) instead of N x N (stocks)
+  # The factor order of Sigma_f must match the columns of X (matrix algebra is positional)
+  if (is.null(colnames(X)) || is.null(colnames(Sigma_f)) ||
+      !identical(colnames(X), colnames(Sigma_f)) || !identical(rownames(Sigma_f), colnames(Sigma_f))) {
+    stop("woodbury_solve: colnames(X) and dimnames(Sigma_f) must be present and identical")
+  }
   D_inv_b <- b / D_diag
   D_inv_X <- X / D_diag  # N x K, each row of X divided by corresponding D_diag element
   # Check and force symmetry on Sigma_f before inverting
