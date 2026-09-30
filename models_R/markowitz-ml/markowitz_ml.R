@@ -2,9 +2,15 @@
 # Combines XGBoost expected returns with Barra USE4S factor covariance
 
 # Section 1: Libraries ---------------------------------------------------------
+# No tidyverse meta-package: it pulls in network/system-library packages that fail
+# the CTF container build and security scan (see docs/ctf_rules.md, Rules 8 and 16)
 library(arrow)
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lubridate)
+library(tibble)
 library(xgboost)
 library(dials)
 library(glmnet)
@@ -13,6 +19,7 @@ library(glmnet)
 source("utils/R/data_prep.R")
 source("utils/R/xgb_utils.R")
 source("utils/R/factor_model_utils.R")
+source("utils/R/output_utils.R")
 
 # Section 3: Portfolio Construction --------------------------------------------
 compute_markowitz_weights <- function(factor_cov_d, factor_chars_sub, x_vars, mu, vol_ann) {
@@ -47,8 +54,10 @@ compute_markowitz_weights <- function(factor_cov_d, factor_chars_sub, x_vars, mu
 
 # Section 4: Main Entry Point -------------------------------------------------
 main <- function(chars, features, daily_ret) {
+  start_time <- Sys.time()
   # ── XGBoost settings ──
   seed <- 1
+  set.seed(seed)
   train_years <- 10
   folds <- 5
   xgb_hps <- 20
@@ -57,8 +66,9 @@ main <- function(chars, features, daily_ret) {
   eta1 <- 0.15
   eta2 <- 0.01
   es <- 25
-  # Use the CPUs allocated by SLURM (detectCores() counts the whole node)
-  cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4)))
+  # Use the CPUs allocated by SLURM (detectCores() counts the whole node);
+  # the CTF runs submissions on 32 cores (docs/ctf_rules.md, Rule 9)
+  cores <- min(32L, as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4))))
   cat(sprintf("XGBoost threads: %d\n", cores))
   test_period_length <- 12
 
@@ -163,6 +173,8 @@ main <- function(chars, features, daily_ret) {
   factor_chars <- create_factor_chars(
     chars = chars_fm, factors = factors, ind = ind, seed = seed
   )
+  # Factor names; industries with no stocks in the sample are dropped
+  x_vars <- x_vars_fun(factors = factors, ind = ind, present = names(factor_chars))
 
   # Prepare daily returns
   daily_ret[, eom := ceiling_date(date, unit = "month") - 1]
@@ -171,7 +183,7 @@ main <- function(chars, features, daily_ret) {
   cat("Running factor regressions...\n")
   factor_regs <- create_factor_regs_ridge(
     chars = chars_fm, factor_chars = factor_chars, daily = daily_ret,
-    factors = factors, ind = ind, lambda = ridge_lambda
+    x_vars = x_vars, lambda = ridge_lambda
   )
 
   # Specific risk
@@ -183,11 +195,10 @@ main <- function(chars, features, daily_ret) {
   cat("Training specific risk models...\n")
   spec_risk_models <- create_specific_risk_models_ridge(
     factor_chars = factor_chars, spec_risk = spec_risk,
-    factors = factors, ind = ind, lambda = ridge_lambda
+    x_vars = x_vars, lambda = ridge_lambda
   )
 
   test_dates <- chars_fm[ctff_test == 1, sort(unique(eom))]
-  x_vars <- x_vars_fun(factors = factors, ind = ind)
 
   cat("Predicting specific risk for test dates...\n")
   spec_risk_preds <- create_spec_risk_preds(
@@ -232,7 +243,7 @@ main <- function(chars, features, daily_ret) {
     )
   }, .progress = "   Markowitz portfolios by date") |> rbindlist()
 
-  return(weights[, .(id, eom, w)])
+  return(finalize_output(weights, start_time))
 }
 
 # Section 5: Local Testing -----------------------------------------------------

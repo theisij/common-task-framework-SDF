@@ -41,44 +41,32 @@ create_factor_chars <- function(chars, factors, ind, seed) {
   return(data)
 }
 
-x_vars_fun <- function(factors, ind) {
+x_vars_fun <- function(factors, ind, present = NULL) {
+  # Factor names in a fixed order: industry dummies (or market), then characteristics.
+  # present: column names of factor_chars; industries with no stocks in the sample
+  # have no dummy column (e.g. in the small CTF validation data) and are dropped
   if (ind) {
     ind_factors <- c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
                      "Money", "NoDur", "Other", "Shops", "Telcm", "Utils")
+    if (!is.null(present)) ind_factors <- intersect(ind_factors, present)
   } else {
     ind_factors <- "mkt"
   }
   c(ind_factors, factors)
 }
 
-factor_formula <- function(y, factors, ind) {
-  if (ind) {
-    ind_factors <- c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
-                     "Money", "NoDur", "Other", "Shops", "Telcm", "Utils")
-  } else {
-    ind_factors <- "mkt"
-  }
-  if (is.null(factors)) {
-    form <- paste0(y, "~-1+", paste0(ind_factors, collapse = "+"))
-  } else {
-    cls_names <- paste0("`", factors, "`")
-    form <- paste0(y, "~-1+", paste0(c(ind_factors, cls_names), collapse = "+"))
-  }
-  return(form)
-}
-
-create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, lambda) {
+create_factor_regs_ridge <- function(chars, factor_chars, daily, x_vars, lambda) {
   # Join chars to daily data: chars eom_ret aligns with daily eom (= month of daily returns)
   data <- daily[date >= min(factor_chars$eom) & id %in% unique(chars$id)][
     , .(id, date, ret_exc, eom_ret = eom)]
   factor_chars_d <- factor_chars[data, on = .(id, eom_ret), nomatch = 0L]
-  # Factor return formula
-  form <- factor_formula(y = "ret_exc", factors = factors, ind = ind)
-  # Run daily cross-sectional ridge regressions
+  # Run daily cross-sectional ridge regressions (no intercept: the industry dummies absorb it).
+  # The design matrix is built directly from x_vars; string-built formulas are flagged
+  # as dynamic code by the CTF security scan
   days <- factor_chars_d$date |> unique() |> sort()
   fct_regs <- days |> map(function(d) {
     sub <- factor_chars_d[date == d]
-    X <- model.matrix(as.formula(form), data = sub)
+    X <- as.matrix(sub[, x_vars, with = FALSE])
     y <- sub$ret_exc
     fit_ridge <- glmnet(X, y, alpha = 0, lambda = lambda, standardize = FALSE, intercept = FALSE)
     # Factor returns
@@ -98,7 +86,6 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
   # fill=TRUE appends columns absent from the first day at the end, so the column
   # order is restored to x_vars below (X and Sigma_f must share the same order)
   factor_returns <- fct_regs |> map("factor_returns") |> rbindlist(fill = TRUE)
-  x_vars <- x_vars_fun(factors = factors, ind = ind)
   missing_cols <- setdiff(x_vars, names(factor_returns))
   if (length(missing_cols) > 0) factor_returns[, (missing_cols) := NA_real_]
   # Impute missing factor returns: industry cols get median of non-missing industry
@@ -199,15 +186,14 @@ create_specific_risk <- function(factor_res, cov_set) {
   return(data)
 }
 
-create_specific_risk_models_ridge <- function(factor_chars, spec_risk, factors, ind, lambda) {
+create_specific_risk_models_ridge <- function(factor_chars, spec_risk, x_vars, lambda) {
   data <- spec_risk[factor_chars, on = .(id, eom)]
   data <- data[!is.na(res_vol)]
   data[, res_vol_log := log(res_vol)]
-  form <- factor_formula(y = "res_vol_log", factors = factors, ind = ind)
   eoms <- data$eom |> unique() |> sort()
   models <- eoms |> map(function(m) {
     sub <- data[eom == m]
-    X <- model.matrix(as.formula(form), data = sub)
+    X <- as.matrix(sub[, x_vars, with = FALSE])
     y <- sub$res_vol_log
     fit_ridge <- glmnet(X, y, alpha = 0, lambda = lambda, standardize = FALSE, intercept = FALSE)
     tibble(eom = m, fit = list(fit_ridge))
@@ -218,7 +204,13 @@ create_specific_risk_models_ridge <- function(factor_chars, spec_risk, factors, 
 create_spec_risk_preds <- function(factor_chars, spec_risk_models, test_dates, x_vars) {
   preds_full <- test_dates |> map(function(d) {
     data <- factor_chars[eom == d]
-    model <- spec_risk_models |> filter(eom == d) |> pull(fit)
+    # Latest model estimated at or before d (only differs from eom == d in short samples)
+    avail <- spec_risk_models |> filter(eom <= d)
+    if (nrow(avail) == 0L) {
+      stop(sprintf("No specific-risk model estimated at or before %s: need stocks with %s", d,
+                   "at least 200 non-missing daily residuals in the past 252 trading days"))
+    }
+    model <- avail |> filter(eom == max(eom)) |> pull(fit)
     preds <- predict(model[[1]], as.matrix(data[, x_vars, with = FALSE]))
     data[, .(id, eom, res_vol_pred = drop(exp(preds)))]
   }, .progress = "   Specific risk predictions") |> rbindlist()

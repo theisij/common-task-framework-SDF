@@ -2,7 +2,7 @@
 source("utils/R/local_testing.R")
 
 # Phase 1: Toy-data tests ─────────────────────────────────────────────────────
-pf <- run_toy_tests("models_R/markowitz-ml/markowitz_ml.R")
+pf <- run_toy_tests("models_R/markowitz-ml/markowitz_ml_standalone.R")
 
 # Phase 2: Validation on full output ───────────────────────────────────────────
 if (FALSE) {

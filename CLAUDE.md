@@ -6,6 +6,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **Common Task Framework (CTF)** competition repository for the paper "The Power of the Common Task Framework" by Hellum, Jensen, Kelly, and Pedersen (2025). The goal is to find the portfolio with the highest Sharpe ratio. Models are submitted to [https://jkpfactors.com/ctf/submit](https://jkpfactors.com/ctf/submit).
 
+## CTF Competition Rules (must follow)
+
+The full rules are in [`docs/ctf_rules.md`](docs/ctf_rules.md) (a copy of https://jkpfactors.com/ctf/rules.md, updated 2026-09-29; re-download it if the site's `updated_at` changes). Every model in this repo is a potential submission, so all model code must satisfy them. In practice:
+
+**Output (Rules 5, 11, 12).**
+- `main(chars, features, daily_ret)` returns exactly `id` (integer), `eom` (Date), `w` (double), with no missing values, no duplicated `(id, eom)`, and a row for every `ctff_test` observation. The output must be under 50 MB.
+- Return the weights only from `main()`: no file input/output inside `main()`.
+- In R, end `main()` with `finalize_output()` (`utils/R/output_utils.R`), which enforces this and logs a summary.
+
+**No lookahead (Rule 1).**
+- Weights at `t` may use only data available at `t`. The CTF reruns each model on data with later months removed and flags any change in earlier weights.
+- Don't let full-sample quantities, such as the set of industries, sample-wide ranks or normalizations, or test-period statistics, leak into earlier months.
+- `ctff_test` defines the test set; never hard-code dates.
+
+**Determinism (Rule 18).**
+- Call `set.seed()` at the start of `main()`. Results must be identical across runs and across thread counts (tolerance: relative 1e-5, absolute 1e-8).
+
+**Security (Rules 10, 15).**
+- No network access, `system()`/`system2()`/`shell()`, `eval()`/`parse()`, `source()`, or `Sys.setenv()`.
+- No string-built formulas (`as.formula(paste(...))`) either: the scanner treats them as dynamic code. Build design matrices directly, e.g. `as.matrix(dt[, x_vars, with = FALSE])`.
+
+**Dependencies (Rules 4, 8, 16).**
+- The runtime is R 4.4.2 with `arrow`, `data.table`, `dplyr` and `tidyr` pre-installed. Every other package must be a CRAN package pinned in the model's own `models_R/<model>/renv.lock`, and must work on R 4.4.2.
+- **Never load `library(tidyverse)`.** Attach only the packages used (e.g. `dplyr`, `tidyr`, `purrr`, `lubridate`, `tibble`). The meta-package pulls in packages that need system libraries missing from the CTF container (`ragg`) and network packages (`httr`, `curl`, `rvest`, …) that fail the security scan.
+
+**Small validation run (Rule 14).**
+- Before the full run, the CTF runs each model on a ~4 MB, 123-month subset with few stocks.
+- Code must not assume every industry, stock or date is present, or that long histories exist. For example, `x_vars_fun(..., present = names(factor_chars))` drops industries with no stocks in the sample.
+
+**Limits (Rules 9, 13).**
+- 32 CPU cores (cap thread counts at 32), 300 GB RAM, 24 hours.
+- Source files must be under 1 MB and UTF-8.
+
+**What went wrong before (Sept 2026).** The CTF admins could not run our submissions because of `library(tidyverse)`, a string-built regression formula, and a crash on the validation data when an industry had no stocks. The checks below now catch all three.
+
 ## Package Management
 
 Uses **uv** as the Python package manager with `pyproject.toml` and `uv.lock`. Python >=3.13 required.
@@ -25,13 +60,18 @@ uv run python models_python/one_over_n/one_over_N.py
 uv run python scripts/data_prep.py
 ```
 
-R models `source()` shared utilities from `utils/R/` and are run directly in R. For HPC submission, `scripts/build_model.R` inlines all `source()` calls into a single `*_standalone.R` file. The SLURM scripts handle this automatically:
+R models `source()` shared utilities from `utils/R/` and are run directly in R. For HPC runs and submission, `scripts/build_model.R` inlines all `source()` calls into a single `*_standalone.R` file and writes the model's own `renv.lock`. The SLURM scripts run the build automatically:
 
 ```bash
-# Build standalone (inlines source() calls) then run
+# Build standalone (inlines source() calls) and the model's renv.lock, then run
 Rscript scripts/build_model.R models_R/markowitz-ml/markowitz_ml.R
 Rscript -e 'source("models_R/markowitz-ml/markowitz_ml_standalone.R"); ...'
+
+# Check the submission files against the CTF rules
+Rscript scripts/check_submission.R models_R/markowitz-ml
 ```
+
+The files to submit for a model are `models_R/<model>/<model>_standalone.R`, `data/processed/<model>.csv`, `models_R/<model>/renv.lock`, and `documentation/<model>/<model>.pdf`.
 
 ## Architecture
 
@@ -57,25 +97,33 @@ def main(chars: pd.DataFrame, features: pd.DataFrame, daily_ret: pd.DataFrame) -
 
 **R:**
 ```r
-main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.table/tibble
+main <- function(chars, features, daily_ret) { ... }  # returns finalize_output(weights, start_time)
 ```
+
+See "CTF Competition Rules" above for the full output contract.
 
 ### Key Data Columns
 
 - `id` — stock identifier
 - `eom` — end-of-month date (primary grouping key)
-- `ctff_test` — test set indicator (filter to `== 1` for submission)
+- `ctff_test` — test set indicator (filter to `== 1` for submission; authoritative for the test period)
 - `ret_exc_lead1m` — one-month-ahead excess return
 - `me` — market equity
 
 ### Adding a New Model
 
-1. Save the script in a folder under `models_python/` or `models_R/`
-2. For R models, `source()` shared utilities from `utils/R/` as needed (e.g., `data_prep.R`, `factor_model_utils.R`, `xgb_utils.R`)
-3. Add a `*_testing.R` file that sources `utils/R/local_testing.R` and calls `run_toy_tests()` / `validate_portfolio()`
-4. Add a SLURM script that calls `scripts/build_model.R` to generate a standalone file before running the model
-5. Save CSV output under `data/processed/{model_name}/`
+1. Save the script in a folder under `models_python/` or `models_R/`, following "CTF Competition Rules" above: explicit packages (no tidyverse), `set.seed()` and `start_time <- Sys.time()` at the start of `main()`, `return(finalize_output(weights, start_time))` at the end
+2. For R models, `source()` shared utilities from `utils/R/` as needed (e.g., `data_prep.R`, `factor_model_utils.R`, `xgb_utils.R`, `output_utils.R`)
+3. Add a `*_testing.R` file that sources `utils/R/local_testing.R` and calls `run_toy_tests()` on the `*_standalone.R` file (and `validate_portfolio()` on the full output)
+4. Add a SLURM script that calls `scripts/build_model.R` to generate the standalone file and `renv.lock` before running the model
+5. Save CSV output as `data/processed/{model_name}.csv`
 6. Save documentation under `documentation/{model_name}/`, including a Performance section that includes `performance_stats.md` and `cumulative_returns.pdf` (add the model to `scripts/performance_stats.R` and run it to generate them)
+
+**Pre-submission checklist** (all must pass before anything is sent to the CTF):
+1. `Rscript scripts/build_model.R models_R/<model>/<model>.R`: standalone file plus `renv.lock`; the build stops if forbidden packages are loaded
+2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing). The tests check the output contract, determinism (two runs) and lookahead (a run with the last test month removed must leave earlier weights unchanged)
+3. Full run on the HPC (SLURM), then `validate_portfolio()` and the documentation's performance statistics
+4. `Rscript scripts/check_submission.R models_R/<model>`: the static rule checks (size, UTF-8, `main` signature, prohibited code, lock file coverage, R 4.4.2 compatibility, output schema and coverage)
 
 ### Key Libraries
 
@@ -89,8 +137,10 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 - `utils/R/data_prep.R` provides `prepare_pred_data()` for R models
 - `utils/R/factor_model_utils.R` provides Barra factor model helpers (regressions, covariance estimation)
 - `utils/R/xgb_utils.R` provides XGBoost hyperparameter tuning and training helpers
-- `utils/R/local_testing.R` provides `run_toy_tests()` and `validate_portfolio()` for model validation
-- `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission
+- `utils/R/local_testing.R` provides `run_toy_tests()` (output contract, determinism and lookahead tests on validation-like toy data) and `validate_portfolio()` for model validation
+- `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission, and writes a per-model `renv.lock` (only that model's packages)
+- `scripts/check_submission.R` checks a model's submission files against the CTF rules; `scripts/submission_utils.R` holds the shared package lists (pre-installed, forbidden)
+- `utils/R/output_utils.R` provides `finalize_output()`, which enforces the output contract at the end of `main()`
 - `utils/R/performance_stats.R` provides `perf_stats()` (mean, SD, Sharpe ratio, gross leverage, turnover, maximum drawdown); `scripts/performance_stats.R` writes each model's documentation table and cumulative-return figure
 
 ### Directories Not in Git

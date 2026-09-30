@@ -2,7 +2,7 @@
 source("utils/R/local_testing.R")
 
 # Phase 1: Toy-data tests ─────────────────────────────────────────────────────
-pf <- run_toy_tests("models_R/factor-ml/factor_ml.R")
+pf <- run_toy_tests("models_R/factor-ml/factor_ml_standalone.R")
 
 # Model-specific checks: weights sum to 0, absolute weights sum to 2
 stopifnot(all(c(

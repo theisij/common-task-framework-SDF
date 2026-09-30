@@ -6,7 +6,9 @@
 #   Rscript scripts/build_model.R models_R/factor-ml/factor_ml.R
 #   Rscript scripts/build_model.R models_R/minimum-variance/minimum_variance.R
 #
-# Output: {model_name}_standalone.R alongside the input file
+# Output, alongside the input file:
+#   {model_name}_standalone.R — the model script to submit
+#   renv.lock                  — the dependency file to submit (only this model's packages)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1) {
@@ -95,5 +97,19 @@ if (length(remaining) > 0) {
 } else {
   cat("Verified: no source() calls in output.\n")
 }
+
+# Write a per-model renv.lock with only the packages the standalone file loads
+# (plus their recursive dependencies); this is the dependency file to submit
+source("scripts/submission_utils.R")
+pkgs <- model_packages(final)
+bad <- intersect(pkgs, CTF_FORBIDDEN_PKGS)
+if (length(bad) > 0) stop(sprintf("Forbidden packages loaded: %s", paste(bad, collapse = ", ")))
+lock_file <- file.path(input_dir, "renv.lock")
+renv::snapshot(lockfile = lock_file, packages = pkgs, prompt = FALSE)
+locked <- names(renv::lockfile_read(lock_file)$Packages)
+bad <- intersect(locked, CTF_FORBIDDEN_PKGS)
+if (length(bad) > 0) stop(sprintf("Forbidden packages in %s: %s", lock_file, paste(bad, collapse = ", ")))
+cat(sprintf("Lock file written to: %s (%d packages for: %s)\n",
+            lock_file, length(locked), paste(pkgs, collapse = ", ")))
 
 cat("Done.\n")

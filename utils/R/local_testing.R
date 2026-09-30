@@ -1,35 +1,58 @@
 # local_testing.R — Shared testing utilities for CTF models
-# Phase 1: run_toy_tests()    — run model on toy data and check output
+# Phase 1: run_toy_tests()    — run the standalone model on toy data: output, determinism, lookahead
 # Phase 2: validate_portfolio() — validate full output and compute Sharpe ratio
 
 library(data.table)
 library(arrow)
 
+#' Weights agree within the CTF tolerance (docs/ctf_rules.md, Rule 18)
+weights_match <- function(a, b, rtol = 1e-5, atol = 1e-8) {
+  m <- merge(a, b, by = c("id", "eom"), all = TRUE, suffixes = c("_a", "_b"))
+  !anyNA(m) && all(abs(m$w_a - m$w_b) <= atol + rtol * abs(m$w_b))
+}
+
 #' Run toy-data tests (Phase 1)
 #'
-#' Sources the model, loads toy data from data/interim/, calls main(),
-#' and runs universal checks on the output.
+#' Sources the model, loads the toy data from data/interim/ (created by
+#' utils/toy_data.R to mimic the CTF validation run), calls main(), and checks:
+#' the output contract (Rule 12), determinism (Rule 18: a second run gives the
+#' same weights) and no lookahead (Rule 1: rerunning on data with the last test
+#' month removed gives the same weights for the remaining months).
 #'
-#' @param model_path Path to the model R script (e.g. "models_R/factor-ml/factor_ml.R")
+#' @param model_path Path to the model script to test; use the *_standalone.R
+#'   file, which is what the CTF runs (build it with scripts/build_model.R)
 #' @return The portfolio data.table for any additional model-specific checks
 run_toy_tests <- function(model_path) {
   source(model_path, echo = TRUE)
   features  <- read_parquet("data/interim/toy_ctff_features.parquet")
-  chars     <- read_parquet("data/interim/toy_ctff_chars.parquet")
-  daily_ret <- read_parquet("data/interim/toy_ctff_daily_ret.parquet")
-  pf <- main(chars = chars, features = features, daily_ret = daily_ret)
+  chars     <- as.data.table(read_parquet("data/interim/toy_ctff_chars.parquet"))
+  daily_ret <- as.data.table(read_parquet("data/interim/toy_ctff_daily_ret.parquet"))
+  pf <- main(chars = copy(chars), features = features, daily_ret = copy(daily_ret))
 
-  # Check: output has expected columns
-  stopifnot(all(c("id", "eom", "w") %in% names(pf)))
-  cat("PASS: output has id, eom, w columns\n")
+  # Rule 12: output contract
+  stopifnot(identical(names(pf), c("id", "eom", "w")))
+  stopifnot(is.integer(pf$id), inherits(pf$eom, "Date"), is.double(pf$w))
+  stopifnot(nrow(pf) > 0, !anyNA(pf), !any(duplicated(pf[, .(id, eom)])))
+  cat("PASS: output is non-empty id (integer), eom (Date), w (double), no NAs or duplicates\n")
+  test_eoms <- chars[ctff_test == 1, sort(unique(eom))]
+  stopifnot(setequal(unique(pf$eom), test_eoms))
+  cat("PASS: weights for every test month\n")
 
-  # Check: no NA weights
-  stopifnot(!any(is.na(pf$w)))
-  cat("PASS: no NA weights\n")
-
-  # Check: non-zero exposure per month
+  # Non-zero exposure per month
   stopifnot(all(pf[, sum(abs(w)) > 0, by = eom]$V1))
   cat("PASS: non-zero exposure per month\n")
+
+  # Rule 18: determinism
+  pf_again <- main(chars = copy(chars), features = features, daily_ret = copy(daily_ret))
+  stopifnot(weights_match(pf, pf_again))
+  cat("PASS: deterministic (second run gives the same weights)\n")
+
+  # Rule 1: no lookahead (truncation test)
+  cutoff <- test_eoms[length(test_eoms) - 1]
+  pf_trunc <- main(chars = chars[eom <= cutoff], features = features,
+                   daily_ret = daily_ret[date <= cutoff])
+  stopifnot(weights_match(pf[eom <= cutoff], pf_trunc))
+  cat(sprintf("PASS: no lookahead (same weights up to %s when later data is removed)\n", cutoff))
 
   cat("\nAll toy-data tests passed!\n")
   return(pf)
