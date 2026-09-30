@@ -86,7 +86,7 @@ main <- function(chars, features, daily_ret) { ... }  # returns data.frame/data.
 - **data.table** is the primary R DataFrame library for data manipulation
 - **xgboost** is used for gradient-boosted tree models in R
 - **arrow** is used for reading parquet files in R
-- `utils/R/data_prep.R` provides `impute_and_rank()` for R models
+- `utils/R/data_prep.R` provides `prepare_pred_data()` for R models
 - `utils/R/factor_model_utils.R` provides Barra factor model helpers (regressions, covariance estimation)
 - `utils/R/xgb_utils.R` provides XGBoost hyperparameter tuning and training helpers
 - `utils/R/local_testing.R` provides `run_toy_tests()` and `validate_portfolio()` for model validation

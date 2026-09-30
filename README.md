@@ -28,7 +28,7 @@ models_R/
 │   ├── factor_ml_testing.R
 │   └── factor_ml.slurm
 utils/R/
-├── data_prep.R                         # impute_and_rank()
+├── data_prep.R                         # prepare_pred_data()
 ├── factor_model_utils.R                # Barra factor model helpers
 ├── xgb_utils.R                         # XGBoost tuning/training helpers
 └── local_testing.R                     # run_toy_tests(), validate_portfolio()
