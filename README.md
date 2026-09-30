@@ -41,10 +41,28 @@ R models `source()` shared code from `utils/R/` (e.g., `source("utils/R/data_pre
 ```bash
 Rscript scripts/build_model.R models_R/markowitz-ml/markowitz_ml.R
 # → creates models_R/markowitz-ml/markowitz_ml_standalone.R
+# → creates models_R/markowitz-ml/renv.lock (only the packages this model loads)
 ```
 
 The SLURM scripts run this build step automatically before execution. The resulting `*_standalone.R` file is the only valid submission file, since it is fully self-contained and does not depend on any external `source()` calls.
 
 Additionally:
-- Save the CSV output in a separate folder under `data/processed/` with a descriptive name (e.g., `data/processed/minimum_variance.csv`).
+- Save the CSV output under `data/processed/` with a descriptive name (e.g., `data/processed/minimum_variance.csv`).
 - Save documentation in a separate folder under `documentation/` (e.g., `documentation/minimum_variance/minimum_variance.pdf`).
+
+### Submitting a model
+
+All models must follow the competition rules, saved in [`docs/ctf_rules.md`](docs/ctf_rules.md). Before submitting, run the toy tests (`models_R/<model>/<model>_testing.R`, after `source("utils/toy_data.R")`) and the rule checks:
+
+```bash
+Rscript scripts/check_submission.R models_R/markowitz-ml
+```
+
+For an R model, the submission form takes:
+
+| Form field | File |
+|---|---|
+| Model Script | `models_R/<model>/<model>_standalone.R` |
+| Model Weights CSV | `data/processed/<model>.csv` |
+| Dependencies File | `models_R/<model>/renv.lock` |
+| Documentation PDF | `documentation/<model>/<model>.pdf` |

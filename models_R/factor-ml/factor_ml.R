@@ -2,15 +2,22 @@
 # Consolidated from models_R/factor-ml-old/ (7-file pipeline)
 
 # Section 1: Libraries ---------------------------------------------------------
+# No tidyverse meta-package: it pulls in network/system-library packages that fail
+# the CTF container build and security scan (see docs/ctf_rules.md, Rules 8 and 16)
 library(arrow)
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lubridate)
+library(tibble)
 library(xgboost)
 library(dials)
 
 # Section 2: Shared Utilities --------------------------------------------------
 source("utils/R/data_prep.R")
 source("utils/R/xgb_utils.R")
+source("utils/R/output_utils.R")
 
 # Section 3: Portfolio Construction --------------------------------------------
 predictions_to_weights <- function(preds, n_pfs = 10) {
@@ -35,8 +42,10 @@ predictions_to_weights <- function(preds, n_pfs = 10) {
 
 # Section 4: Main Entry Point -------------------------------------------------
 main <- function(chars, features, daily_ret) {
+  start_time <- Sys.time()
   # Settings
   seed <- 1
+  set.seed(seed)
   train_years <- 10
   folds <- 5
   xgb_hps <- 20
@@ -45,8 +54,9 @@ main <- function(chars, features, daily_ret) {
   eta1 <- 0.15
   eta2 <- 0.01
   es <- 25
-  # Use the CPUs allocated by SLURM (detectCores() counts the whole node)
-  cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4)))
+  # Use the CPUs allocated by SLURM (detectCores() counts the whole node);
+  # the CTF runs submissions on 32 cores (docs/ctf_rules.md, Rule 9)
+  cores <- min(32L, as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4))))
   cat(sprintf("XGBoost threads: %d\n", cores))
   n_pfs <- 10
   test_period_length <- 12  # months per chunk: 1 = tune every month, 12 = tune once/year
@@ -121,7 +131,7 @@ main <- function(chars, features, daily_ret) {
   all_preds <- chars[, .(id, eom, excntry)][all_preds, on = .(id, eom)]
   weights <- predictions_to_weights(all_preds, n_pfs = n_pfs)
 
-  return(weights)
+  return(finalize_output(weights, start_time))
 }
 
 # Section 5: Local Testing -----------------------------------------------------

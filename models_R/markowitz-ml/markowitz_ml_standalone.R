@@ -1,6 +1,10 @@
 library(arrow)
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lubridate)
+library(tibble)
 library(xgboost)
 library(dials)
 library(glmnet)
@@ -9,6 +13,8 @@ library(glmnet)
 # Combines XGBoost expected returns with Barra USE4S factor covariance
 
 # Section 1: Libraries ---------------------------------------------------------
+# No tidyverse meta-package: it pulls in network/system-library packages that fail
+# the CTF container build and security scan (see docs/ctf_rules.md, Rules 8 and 16)
 
 # Section 2: Shared Utilities --------------------------------------------------
 # [build] Begin inlined: utils/R/data_prep.R
@@ -235,44 +241,32 @@ create_factor_chars <- function(chars, factors, ind, seed) {
   return(data)
 }
 
-x_vars_fun <- function(factors, ind) {
+x_vars_fun <- function(factors, ind, present = NULL) {
+  # Factor names in a fixed order: industry dummies (or market), then characteristics.
+  # present: column names of factor_chars; industries with no stocks in the sample
+  # have no dummy column (e.g. in the small CTF validation data) and are dropped
   if (ind) {
     ind_factors <- c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
                      "Money", "NoDur", "Other", "Shops", "Telcm", "Utils")
+    if (!is.null(present)) ind_factors <- intersect(ind_factors, present)
   } else {
     ind_factors <- "mkt"
   }
   c(ind_factors, factors)
 }
 
-factor_formula <- function(y, factors, ind) {
-  if (ind) {
-    ind_factors <- c("BusEq", "Chems", "Durbl", "Enrgy", "Hlth", "Manuf",
-                     "Money", "NoDur", "Other", "Shops", "Telcm", "Utils")
-  } else {
-    ind_factors <- "mkt"
-  }
-  if (is.null(factors)) {
-    form <- paste0(y, "~-1+", paste0(ind_factors, collapse = "+"))
-  } else {
-    cls_names <- paste0("`", factors, "`")
-    form <- paste0(y, "~-1+", paste0(c(ind_factors, cls_names), collapse = "+"))
-  }
-  return(form)
-}
-
-create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, lambda) {
+create_factor_regs_ridge <- function(chars, factor_chars, daily, x_vars, lambda) {
   # Join chars to daily data: chars eom_ret aligns with daily eom (= month of daily returns)
   data <- daily[date >= min(factor_chars$eom) & id %in% unique(chars$id)][
     , .(id, date, ret_exc, eom_ret = eom)]
   factor_chars_d <- factor_chars[data, on = .(id, eom_ret), nomatch = 0L]
-  # Factor return formula
-  form <- factor_formula(y = "ret_exc", factors = factors, ind = ind)
-  # Run daily cross-sectional ridge regressions
+  # Run daily cross-sectional ridge regressions (no intercept: the industry dummies absorb it).
+  # The design matrix is built directly from x_vars; string-built formulas are flagged
+  # as dynamic code by the CTF security scan
   days <- factor_chars_d$date |> unique() |> sort()
   fct_regs <- days |> map(function(d) {
     sub <- factor_chars_d[date == d]
-    X <- model.matrix(as.formula(form), data = sub)
+    X <- as.matrix(sub[, x_vars, with = FALSE])
     y <- sub$ret_exc
     fit_ridge <- glmnet(X, y, alpha = 0, lambda = lambda, standardize = FALSE, intercept = FALSE)
     # Factor returns
@@ -292,7 +286,6 @@ create_factor_regs_ridge <- function(chars, factor_chars, daily, factors, ind, l
   # fill=TRUE appends columns absent from the first day at the end, so the column
   # order is restored to x_vars below (X and Sigma_f must share the same order)
   factor_returns <- fct_regs |> map("factor_returns") |> rbindlist(fill = TRUE)
-  x_vars <- x_vars_fun(factors = factors, ind = ind)
   missing_cols <- setdiff(x_vars, names(factor_returns))
   if (length(missing_cols) > 0) factor_returns[, (missing_cols) := NA_real_]
   # Impute missing factor returns: industry cols get median of non-missing industry
@@ -393,15 +386,14 @@ create_specific_risk <- function(factor_res, cov_set) {
   return(data)
 }
 
-create_specific_risk_models_ridge <- function(factor_chars, spec_risk, factors, ind, lambda) {
+create_specific_risk_models_ridge <- function(factor_chars, spec_risk, x_vars, lambda) {
   data <- spec_risk[factor_chars, on = .(id, eom)]
   data <- data[!is.na(res_vol)]
   data[, res_vol_log := log(res_vol)]
-  form <- factor_formula(y = "res_vol_log", factors = factors, ind = ind)
   eoms <- data$eom |> unique() |> sort()
   models <- eoms |> map(function(m) {
     sub <- data[eom == m]
-    X <- model.matrix(as.formula(form), data = sub)
+    X <- as.matrix(sub[, x_vars, with = FALSE])
     y <- sub$res_vol_log
     fit_ridge <- glmnet(X, y, alpha = 0, lambda = lambda, standardize = FALSE, intercept = FALSE)
     tibble(eom = m, fit = list(fit_ridge))
@@ -412,7 +404,13 @@ create_specific_risk_models_ridge <- function(factor_chars, spec_risk, factors, 
 create_spec_risk_preds <- function(factor_chars, spec_risk_models, test_dates, x_vars) {
   preds_full <- test_dates |> map(function(d) {
     data <- factor_chars[eom == d]
-    model <- spec_risk_models |> filter(eom == d) |> pull(fit)
+    # Latest model estimated at or before d (only differs from eom == d in short samples)
+    avail <- spec_risk_models |> filter(eom <= d)
+    if (nrow(avail) == 0L) {
+      stop(sprintf("No specific-risk model estimated at or before %s: need stocks with %s", d,
+                   "at least 200 non-missing daily residuals in the past 252 trading days"))
+    }
+    model <- avail |> filter(eom == max(eom)) |> pull(fit)
     preds <- predict(model[[1]], as.matrix(data[, x_vars, with = FALSE]))
     data[, .(id, eom, res_vol_pred = drop(exp(preds)))]
   }, .progress = "   Specific risk predictions") |> rbindlist()
@@ -449,6 +447,33 @@ woodbury_solve <- function(D_diag, Sigma_f, X, b) {
   D_inv_b - D_inv_X %*% (M_inv %*% (t(X) %*% D_inv_b))
 }
 # [build] End inlined: utils/R/factor_model_utils.R
+# [build] Begin inlined: utils/R/output_utils.R
+# output_utils.R — Enforce the CTF output contract at the end of main()
+# Used by: factor_ml, minimum_variance, markowitz_ml
+# See docs/ctf_rules.md (Rule 12: output format; Rule 17: logging)
+
+#' Validate, type and log the portfolio weights returned by main()
+#'
+#' Returns exactly the columns id (integer), eom (Date) and w (double), and stops
+#' if the output is empty, has missing values, or repeats an (id, eom) pair.
+#'
+#' @param weights    data.table with at least id, eom, w
+#' @param start_time Sys.time() recorded at the start of main(), for the runtime log
+#' @return data.table with columns id, eom, w
+finalize_output <- function(weights, start_time) {
+  out <- as.data.table(weights)[, .(id = as.integer(id), eom = as.Date(eom), w = as.double(w))]
+  if (nrow(out) == 0L) stop("main() output is empty")
+  n_na <- out[, sum(is.na(id)) + sum(is.na(eom)) + sum(is.na(w))]
+  if (n_na > 0) stop(sprintf("main() output has %d missing values", n_na))
+  n_dup <- sum(duplicated(out[, .(id, eom)]))
+  if (n_dup > 0) stop(sprintf("main() output has %d duplicated (id, eom) pairs", n_dup))
+  cat(sprintf("Output: %s rows, %d months (%s to %s), %s nonzero weights; runtime %.1f minutes\n",
+              format(nrow(out), big.mark = ","), uniqueN(out$eom), min(out$eom), max(out$eom),
+              format(sum(out$w != 0), big.mark = ","),
+              as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+  out
+}
+# [build] End inlined: utils/R/output_utils.R
 
 # Section 3: Portfolio Construction --------------------------------------------
 compute_markowitz_weights <- function(factor_cov_d, factor_chars_sub, x_vars, mu, vol_ann) {
@@ -483,8 +508,10 @@ compute_markowitz_weights <- function(factor_cov_d, factor_chars_sub, x_vars, mu
 
 # Section 4: Main Entry Point -------------------------------------------------
 main <- function(chars, features, daily_ret) {
+  start_time <- Sys.time()
   # ── XGBoost settings ──
   seed <- 1
+  set.seed(seed)
   train_years <- 10
   folds <- 5
   xgb_hps <- 20
@@ -493,8 +520,9 @@ main <- function(chars, features, daily_ret) {
   eta1 <- 0.15
   eta2 <- 0.01
   es <- 25
-  # Use the CPUs allocated by SLURM (detectCores() counts the whole node)
-  cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4)))
+  # Use the CPUs allocated by SLURM (detectCores() counts the whole node);
+  # the CTF runs submissions on 32 cores (docs/ctf_rules.md, Rule 9)
+  cores <- min(32L, as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", max(1, parallel::detectCores() - 4))))
   cat(sprintf("XGBoost threads: %d\n", cores))
   test_period_length <- 12
 
@@ -599,6 +627,8 @@ main <- function(chars, features, daily_ret) {
   factor_chars <- create_factor_chars(
     chars = chars_fm, factors = factors, ind = ind, seed = seed
   )
+  # Factor names; industries with no stocks in the sample are dropped
+  x_vars <- x_vars_fun(factors = factors, ind = ind, present = names(factor_chars))
 
   # Prepare daily returns
   daily_ret[, eom := ceiling_date(date, unit = "month") - 1]
@@ -607,7 +637,7 @@ main <- function(chars, features, daily_ret) {
   cat("Running factor regressions...\n")
   factor_regs <- create_factor_regs_ridge(
     chars = chars_fm, factor_chars = factor_chars, daily = daily_ret,
-    factors = factors, ind = ind, lambda = ridge_lambda
+    x_vars = x_vars, lambda = ridge_lambda
   )
 
   # Specific risk
@@ -619,11 +649,10 @@ main <- function(chars, features, daily_ret) {
   cat("Training specific risk models...\n")
   spec_risk_models <- create_specific_risk_models_ridge(
     factor_chars = factor_chars, spec_risk = spec_risk,
-    factors = factors, ind = ind, lambda = ridge_lambda
+    x_vars = x_vars, lambda = ridge_lambda
   )
 
   test_dates <- chars_fm[ctff_test == 1, sort(unique(eom))]
-  x_vars <- x_vars_fun(factors = factors, ind = ind)
 
   cat("Predicting specific risk for test dates...\n")
   spec_risk_preds <- create_spec_risk_preds(
@@ -668,7 +697,7 @@ main <- function(chars, features, daily_ret) {
     )
   }, .progress = "   Markowitz portfolios by date") |> rbindlist()
 
-  return(weights[, .(id, eom, w)])
+  return(finalize_output(weights, start_time))
 }
 
 # Section 5: Local Testing -----------------------------------------------------

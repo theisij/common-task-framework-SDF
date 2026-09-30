@@ -1,17 +1,23 @@
-# create_toy_data.R — Subsample real CTF data into a tiny toy dataset
-# for quick end-to-end testing of factor_ml.R
+# create_toy_data.R — Subsample real CTF data into a small toy dataset that
+# mimics the CTF validation run (~123 months, a small cross-section), for quick
+# end-to-end testing of the models before submission
 #
 # Usage: source("utils/toy_data.R")
 
 library(arrow)
-library(tidyverse)
 library(data.table)
+library(dplyr)
+library(lubridate)
+source("utils/R/factor_model_utils.R")  # ff12_class()
 
 # ── Config ──────────────────────────────────────────────────────────────────
 N_FEATURES    <- 10    # Number of features to sample
-N_TEST_MONTHS <- 2     # Number of test months to keep
+N_TEST_MONTHS <- 3     # Number of test months to keep (10 train years + 3 = 123 months, as in the CTF validation run)
 N_STOCKS      <- 50    # Target number of stocks per month
 TRAIN_YEARS   <- 10    # Must match factor_ml.R setting
+DROP_INDUSTRY <- "Utils"  # Remove one FF12 industry entirely: small samples can lack industries
+LATE_INDUSTRY <- "Enrgy"  # Industry that first appears in the last test month (one stock), so the
+                           # lookahead test covers factors that only exist in later data
 SEED          <- 1
 OUT_DIR       <- file.path("data", "interim")
 
@@ -58,6 +64,12 @@ chars[, ctff_test := as.integer(eom_ret %in% selected_test_dates)]
 cat(sprintf("  After date filter: %s rows\n", format(nrow(chars), big.mark = ",")))
 
 # ── Step 4: Select stocks ──────────────────────────────────────────────────
+# Drop one industry entirely so the models' absent-industry path is exercised, and
+# set aside the late industry (added back in the last test month only, below)
+late_pool <- chars[ff12_class(sic) == LATE_INDUSTRY & eom_ret == max(selected_test_dates)]
+chars <- chars[!ff12_class(sic) %in% c(DROP_INDUSTRY, LATE_INDUSTRY)]
+cat(sprintf("  Dropped industry: %s; late industry: %s\n", DROP_INDUSTRY, LATE_INDUSTRY))
+
 # Pick 2-3 top countries by row count (exercises excntry grouping)
 country_counts <- chars[, .N, by = excntry][order(-N)]
 top_countries <- head(country_counts$excntry, 3)
@@ -88,6 +100,12 @@ if (length(good_stocks) > N_STOCKS) {
 }
 
 chars <- chars[id %in% selected_stocks]
+
+# Add one late-industry stock in the last test month only
+late_row <- late_pool[excntry %in% top_countries][order(id)][1]
+stopifnot(nrow(late_row) == 1, !is.na(late_row$id))
+chars <- rbind(chars, late_row)
+cat(sprintf("  Late-industry stock %d added in %s only\n", late_row$id, late_row$eom))
 cat(sprintf("  After stock filter: %s rows, %d unique stocks\n",
             format(nrow(chars), big.mark = ","),
             uniqueN(chars$id)))
@@ -96,7 +114,8 @@ cat(sprintf("  After stock filter: %s rows, %d unique stocks\n",
 # Filter real daily returns to selected stock IDs and date range
 cat("Reading daily returns (filtered)...\n")
 daily_ret <- as.data.table(read_parquet("data/raw/ctff_daily_ret.parquet"))
-daily_ret <- daily_ret[id %in% selected_stocks & date >= train_start & date <= max(selected_test_dates)]
+daily_ret <- daily_ret[(id %in% selected_stocks & date >= train_start & date <= max(selected_test_dates)) |
+                         (id == late_row$id & date > late_row$eom & date <= late_row$eom_ret)]
 cat(sprintf("  Daily returns: %s rows, %d unique stocks\n",
             format(nrow(daily_ret), big.mark = ","),
             uniqueN(daily_ret$id)))
@@ -130,6 +149,7 @@ cat(sprintf("  Total months:   %d\n", uniqueN(chars$eom_ret)))
 cat(sprintf("  Test months:    %d\n", N_TEST_MONTHS))
 cat(sprintf("  Train months:   ~%d\n", uniqueN(chars$eom_ret) - N_TEST_MONTHS))
 cat(sprintf("  Countries:      %s\n", paste(top_countries, collapse = ", ")))
+cat(sprintf("  Dropped industry: %s\n", DROP_INDUSTRY))
 cat(sprintf("  Total rows:     %s\n", format(nrow(chars), big.mark = ",")))
 cat("\n")
 cat("  Usage:\n")

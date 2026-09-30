@@ -2,14 +2,21 @@
 # Consolidated from models_R/minimum-variance/old_code/ (4-file pipeline)
 
 # Section 1: Libraries ---------------------------------------------------------
+# No tidyverse meta-package: it pulls in network/system-library packages that fail
+# the CTF container build and security scan (see docs/ctf_rules.md, Rules 8 and 16)
 library(arrow)
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(lubridate)
+library(tibble)
 library(glmnet)
 
 # Section 2: Shared Utilities --------------------------------------------------
 source("utils/R/data_prep.R")
 source("utils/R/factor_model_utils.R")
+source("utils/R/output_utils.R")
 
 # Section 3: Portfolio Construction --------------------------------------------
 compute_min_var_weights <- function(factor_cov_d, factor_chars_sub, x_vars) {
@@ -26,8 +33,10 @@ compute_min_var_weights <- function(factor_cov_d, factor_chars_sub, x_vars) {
 
 # Section 4: Main Entry Point -------------------------------------------------
 main <- function(chars, features, daily_ret) {
+  start_time <- Sys.time()
   # Settings
   seed <- 1
+  set.seed(seed)
   ind <- TRUE
   ridge_lambda <- 1e-4
   cov_set <- list(
@@ -59,6 +68,8 @@ main <- function(chars, features, daily_ret) {
     ind = ind,
     seed = seed
   )
+  # Factor names; industries with no stocks in the sample are dropped
+  x_vars <- x_vars_fun(factors = factors, ind = ind, present = names(factor_chars))
 
   # Prepare daily returns: add eom (month-end date for joining with chars)
   daily_ret[, eom := ceiling_date(date, unit = "month") - 1]
@@ -69,8 +80,7 @@ main <- function(chars, features, daily_ret) {
     chars = chars,
     factor_chars = factor_chars,
     daily = daily_ret,
-    factors = factors,
-    ind = ind,
+    x_vars = x_vars,
     lambda = ridge_lambda
   )
 
@@ -86,14 +96,12 @@ main <- function(chars, features, daily_ret) {
   spec_risk_models <- create_specific_risk_models_ridge(
     factor_chars = factor_chars,
     spec_risk = spec_risk,
-    factors = factors,
-    ind = ind,
+    x_vars = x_vars,
     lambda = ridge_lambda
   )
 
-  # Identify test dates and x-variables
+  # Identify test dates
   test_dates <- chars[ctff_test == 1, sort(unique(eom))]
-  x_vars <- x_vars_fun(factors = factors, ind = ind)
 
   # Predict specific risk for test dates
   cat("Predicting specific risk for test dates...\n")
@@ -132,7 +140,7 @@ main <- function(chars, features, daily_ret) {
     compute_min_var_weights(factor_cov_d, factor_chars_sub, x_vars)
   }, .progress = "   Min-var portfolios by date") |> rbindlist()
 
-  return(weights[, .(id, eom, w)])
+  return(finalize_output(weights, start_time))
 }
 
 # Section 5: Local Testing -----------------------------------------------------
