@@ -39,19 +39,21 @@ echo "[bootstrap] renv::restore() inside container..."
 apptainer exec -B "$PWD" "$IMAGE" \
   R -q -e "renv::restore(prompt=FALSE)"
 
+# Build standalone file (inlines source() calls)
+echo "[build] Building standalone factor_ml..."
+apptainer exec -B "$PWD" "$IMAGE" \
+  Rscript scripts/build_model.R models_R/factor-ml/factor_ml.R
+
 # Run factor_ml
 echo "[run] Running factor_ml..."
 START_TIME=$(date +%s)
 apptainer exec -B "$PWD" "$IMAGE" \
   Rscript -e '
-source("models_R/factor-ml/factor_ml.R")
+source("models_R/factor-ml/factor_ml_standalone.R")
 
 features  <- arrow::read_parquet("data/raw/ctff_features.parquet")
 chars     <- arrow::read_parquet("data/raw/ctff_chars.parquet")
 daily_ret <- arrow::read_parquet("data/raw/ctff_daily_ret.parquet")
-#features  <- arrow::read_parquet("private/toy_dataset/ctff_features.parquet")
-#chars     <- arrow::read_parquet("private/toy_dataset/ctff_chars.parquet")
-#daily_ret <- arrow::read_parquet("private/toy_dataset/ctff_daily_ret.parquet")
 
 pf <- main(chars = chars, features = features, daily_ret = daily_ret)
 

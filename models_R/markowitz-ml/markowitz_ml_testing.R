@@ -1,14 +1,10 @@
-# minimum_variance_testing.R — Test minimum-variance model
+# markowitz_ml_testing.R — Test markowitz-ml model
 source("utils/R/local_testing.R")
 
 # Phase 1: Toy-data tests ─────────────────────────────────────────────────────
-pf <- run_toy_tests("models_R/minimum-variance/minimum_variance.R")
-
-# Model-specific check: weights sum to 1 per month (fully invested)
-stopifnot(all(pf[, all.equal(sum(w), 1), by = eom]$V1))
-cat("PASS: weights sum to 1 per month\n")
+pf <- run_toy_tests("models_R/markowitz-ml/markowitz_ml.R")
 
 # Phase 2: Validation on full output ───────────────────────────────────────────
 if (FALSE) {
-  validate_portfolio("Minimum-Variance", "data/processed/minimum_variance.csv")
+  validate_portfolio("Markowitz-ML", "data/processed/markowitz_ml.csv")
 }
