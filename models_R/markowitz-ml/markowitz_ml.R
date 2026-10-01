@@ -87,14 +87,11 @@ main <- function(chars, features, daily_ret) {
   # ── Markowitz settings ──
   vol_ann <- 0.10  # target annualized volatility
 
-  # Convert inputs to data.table
-  chars <- as.data.table(chars)
-  daily_ret <- as.data.table(daily_ret)
-  # Fix the row order: XGBoost's row subsampling picks rows by position, so the
-  # weights must not depend on the order rows arrive in (docs/ctf_rules.md, Rule 18)
-  setorder(chars, id, eom)
-  setorder(daily_ret, id, date)
-  features <- features$features
+  # Canonical order of rows, columns and features, so the weights don't depend on
+  # how the data is fed in (utils/R/data_prep.R; docs/ctf_rules.md, Rule 18)
+  chars <- canonical_chars(chars)
+  daily_ret <- canonical_daily_ret(daily_ret)
+  features <- canonical_features(features)
 
   # ═══════════════════════════════════════════════════════════════════════════════
   # Part A: XGBoost expected returns (same pipeline as factor_ml)

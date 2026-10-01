@@ -48,10 +48,11 @@ main <- function(chars, features, daily_ret) {
     initial_var_obs = 63    # 21 * 3 = ~3 months to seed EWMA
   )
 
-  # Convert inputs to data.table
-  chars <- as.data.table(chars)
-  daily_ret <- as.data.table(daily_ret)
-  features <- features$features
+  # Canonical order of rows, columns and features, so the weights don't depend on
+  # how the data is fed in (utils/R/data_prep.R; docs/ctf_rules.md, Rule 18)
+  chars <- canonical_chars(chars)
+  daily_ret <- canonical_daily_ret(daily_ret)
+  features <- canonical_features(features)
 
   # Prepare features: percentile rank + impute (min_obs = 10 for factor model)
   chars <- chars |>

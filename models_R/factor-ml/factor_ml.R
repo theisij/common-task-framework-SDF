@@ -61,12 +61,10 @@ main <- function(chars, features, daily_ret) {
   n_pfs <- 10
   test_period_length <- 12  # months per chunk: 1 = tune every month, 12 = tune once/year
 
-  # Convert to data.table
-  chars <- as.data.table(chars)
-  # Fix the row order: XGBoost's row subsampling picks rows by position, so the
-  # weights must not depend on the order rows arrive in (docs/ctf_rules.md, Rule 18)
-  setorder(chars, id, eom)
-  features <- features$features
+  # Canonical order of rows, columns and features, so the weights don't depend on
+  # how the data is fed in (utils/R/data_prep.R; docs/ctf_rules.md, Rule 18)
+  chars <- canonical_chars(chars)
+  features <- canonical_features(features)
 
   # Prepare data: percentile rank + impute
   chars <- chars |>
