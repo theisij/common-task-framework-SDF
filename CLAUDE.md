@@ -124,6 +124,7 @@ See "CTF Competition Rules" above for the full output contract.
 2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing, one industry appearing only in the last test month). The tests check the output contract, determinism (two runs) and lookahead (a run with the last test month removed must leave earlier weights unchanged)
 3. Full run on the HPC (SLURM), then `validate_portfolio()` and the documentation's performance statistics
 4. `Rscript scripts/check_submission.R models_R/<model>`: the rule checks (size, UTF-8, `main` signature, prohibited code, lock file coverage, R 4.4.2 compatibility of the locked versions, output schema and coverage; a missing weights CSV fails unless `--static` is given)
+5. After merging to `main`: tag the commit (`git tag -a ctf-submission-YYYY-MM-DD`, then `git push origin <tag>`), run `Rscript scripts/code_version.R <tag>` to write each model's `code_version.md` (repo, tag, commit, SHA-256 of the submitted script), and re-render the documentation, which includes it in its "Code and Reproducibility" section
 
 ### Key Libraries
 
@@ -140,6 +141,7 @@ See "CTF Competition Rules" above for the full output contract.
 - `utils/R/local_testing.R` provides `run_toy_tests()` (output contract, determinism and lookahead tests on validation-like toy data) and `validate_portfolio()` for model validation
 - `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission, and writes a per-model `renv.lock` (only that model's packages)
 - `scripts/check_submission.R` checks a model's submission files against the CTF rules; `scripts/submission_utils.R` holds the shared package lists (pre-installed, forbidden)
+- `scripts/code_version.R` writes each model's documentation section recording the public repo, tag, commit and script checksum of a submission
 - `utils/R/output_utils.R` provides `finalize_output()`, which enforces the output contract at the end of `main()`
 - `utils/R/performance_stats.R` provides `perf_stats()` (mean, SD, Sharpe ratio, gross leverage, turnover, maximum drawdown); `scripts/performance_stats.R` writes each model's documentation table and cumulative-return figure
 

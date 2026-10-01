@@ -66,4 +66,8 @@ Gross leverage is the sum of the absolute portfolio weights, averaged over month
 
 ![Cumulative excess return (sum of monthly returns) over the test period.](cumulative_returns.pdf){#fig-cumret}
 
+# Code and Reproducibility
+
+{{< include code_version.md >}}
+
 # References
