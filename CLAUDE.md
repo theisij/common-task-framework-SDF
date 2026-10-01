@@ -22,6 +22,7 @@ The full rules are in [`docs/ctf_rules.md`](docs/ctf_rules.md) (a copy of https:
 
 **Determinism (Rule 18).**
 - Call `set.seed()` at the start of `main()`. Results must be identical across runs and across thread counts (tolerance: relative 1e-5, absolute 1e-8).
+- Results must not depend on the order of the input rows: the CTF pipeline may pass rows in a different order than our files, which are sorted by `id`, `eom`. Any model with random sampling (e.g. XGBoost's row subsampling picks rows by position) must sort its inputs at the start of `main()` (`setorder(chars, id, eom)`, `setorder(daily_ret, id, date)`). The toy tests rerun each model on shuffled rows.
 
 **Security (Rules 10, 15).**
 - No network access, `system()`/`system2()`/`shell()`, `eval()`/`parse()`, `source()`, or `Sys.setenv()`.
@@ -40,6 +41,8 @@ The full rules are in [`docs/ctf_rules.md`](docs/ctf_rules.md) (a copy of https:
 - Source files must be under 1 MB and UTF-8.
 
 **What went wrong before (Sept 2026).** The CTF admins could not run our submissions because of `library(tidyverse)`, a string-built regression formula, and a crash on the validation data when an industry had no stocks. The checks below now catch all three.
+
+**What went wrong before (Oct 2026).** The CTF pipeline got lower Sharpe ratios than our runs for the two XGBoost models (Factor-ML 0.74 vs 0.82, Markowitz-ML 2.31 vs 2.49) with identical environments: their training used the rows in a different order. The models now sort their inputs, and the toy tests check shuffled rows.
 
 ## Package Management
 
@@ -121,7 +124,7 @@ See "CTF Competition Rules" above for the full output contract.
 
 **Pre-submission checklist** (all must pass before anything is sent to the CTF):
 1. `Rscript scripts/build_model.R models_R/<model>/<model>.R`: standalone file plus `renv.lock`; the build stops if forbidden packages are loaded
-2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing, one industry appearing only in the last test month). The tests check the output contract, determinism (two runs) and lookahead (a run with the last test month removed must leave earlier weights unchanged)
+2. `source("utils/toy_data.R")`, then `Rscript models_R/<model>/<model>_testing.R`. The toy data mimics the 123-month validation run (few stocks, one industry missing, one industry appearing only in the last test month). The tests check the output contract, determinism (two runs), invariance to shuffled input rows, and lookahead (a run with the last test month removed must leave earlier weights unchanged)
 3. Full run on the HPC (SLURM), then `validate_portfolio()` and the documentation's performance statistics
 4. `Rscript scripts/check_submission.R models_R/<model>`: the rule checks (size, UTF-8, `main` signature, prohibited code, lock file coverage, R 4.4.2 compatibility of the locked versions, output schema and coverage; a missing weights CSV fails unless `--static` is given)
 5. After merging to `main`: tag the commit (`git tag -a ctf-submission-YYYY-MM-DD`, then `git push origin <tag>`), run `Rscript scripts/code_version.R <tag>` to write each model's `code_version.md` (repo, tag, commit, SHA-256 of the submitted script), and re-render the documentation, which includes it in its "Code and Reproducibility" section

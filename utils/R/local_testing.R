@@ -17,7 +17,8 @@ weights_match <- function(a, b, rtol = 1e-5, atol = 1e-8) {
 #' utils/toy_data.R to mimic the CTF validation run), calls main(), and checks:
 #' the output contract (Rule 12), determinism (Rule 18: a second run gives the
 #' same weights) and no lookahead (Rule 1: rerunning on data with the last test
-#' month removed gives the same weights for the remaining months).
+#' month removed gives the same weights for the remaining months), and that
+#' shuffling the input rows does not change the weights (Rule 18).
 #'
 #' @param model_path Path to the model script to test; use the *_standalone.R
 #'   file, which is what the CTF runs (build it with scripts/build_model.R)
@@ -47,6 +48,13 @@ run_toy_tests <- function(model_path) {
   pf_again <- main(chars = copy(chars), features = features, daily_ret = copy(daily_ret))
   stopifnot(weights_match(pf, pf_again))
   cat("PASS: deterministic (second run gives the same weights)\n")
+
+  # Rule 18: the CTF pipeline may pass rows in a different order than our files
+  set.seed(2026)
+  pf_shuffled <- main(chars = chars[sample(.N)], features = features,
+                      daily_ret = daily_ret[sample(.N)])
+  stopifnot(weights_match(pf, pf_shuffled))
+  cat("PASS: same weights when the input rows are shuffled\n")
 
   # Rule 1: no lookahead (truncation test)
   cutoff <- test_eoms[length(test_eoms) - 1]
