@@ -11,6 +11,8 @@
 repo_url <- "https://github.com/theisij/common-task-framework-SDF"
 models <- c("factor-ml" = "factor_ml", "minimum-variance" = "minimum_variance",
             "markowitz-ml" = "markowitz_ml")
+uses_daily_ret <- c("minimum-variance", "markowitz-ml")  # models whose main() uses daily_ret
+uses_xgboost <- c("factor-ml", "markowitz-ml")
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) stop("Usage: Rscript scripts/code_version.R <tag> [model ...]")
@@ -44,7 +46,14 @@ for (m in names(models)) {
     "```",
     "",
     sprintf("To reproduce, check out the tag, place the CTF data in `data/raw/`, run `Rscript scripts/build_model.R models_R/%s/%s.R`, and call `main()` in the resulting standalone script (or submit `models_R/%s/%s.slurm` on a SLURM cluster).",
-            m, models[[m]], m, models[[m]])
+            m, models[[m]], m, models[[m]]),
+    "",
+    sprintf(paste("The weights are deterministic and do not depend on how the data is passed to the model.",
+                  "Random seeds are fixed, and `main()` first puts its inputs in a canonical order: the stock characteristics are sorted by stock identifier and month, %sthe list of features alphabetically, and the columns by name.",
+                  "This matters because some estimation steps depend on the order of the data, for example %s."),
+            if (m %in% uses_daily_ret) "the daily returns by stock identifier and date, " else "",
+            if (m %in% uses_xgboost) "XGBoost's random sampling of rows and columns"
+            else "the order in which the ridge regression solver visits the characteristics")
   )
   writeLines(lines, file.path("documentation", m, "code_version.md"))
   cat(sprintf("%-16s %s  %s\n", m, sha, script))
