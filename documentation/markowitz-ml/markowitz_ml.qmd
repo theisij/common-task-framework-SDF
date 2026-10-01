@@ -83,7 +83,7 @@ The raw weights are then rescaled to target an annualized volatility of 10%:
 $$
 w_t = w_t^{\text{raw}} \cdot \sqrt{\frac{\sigma^2_{\text{target}} / 12}{w_t^{\text{raw}\prime} \hat{\Sigma}_t^{\text{monthly}} w_t^{\text{raw}}}},
 $$
-where $\sigma_{\text{target}} = 0.10$ and $\hat{\Sigma}_t^{\text{monthly}} = 21 \cdot \hat{\Sigma}_t$ converts the daily covariance matrix to a monthly frequency. In practice, the realized volatility of the portfolio (15.8% over the test period; see @tbl-perf) exceeds the 10% target. Mean-variance optimization amplifies estimation error in the inputs, tilting the portfolio toward positions whose risk is underestimated, so the ex-ante volatility understates the realized volatility.
+where $\sigma_{\text{target}} = 0.10$ and $\hat{\Sigma}_t^{\text{monthly}} = 21 \cdot \hat{\Sigma}_t$ converts the daily covariance matrix to a monthly frequency. In practice, the realized volatility of the portfolio (14.7% over the test period; see @tbl-perf) exceeds the 10% target. Mean-variance optimization amplifies estimation error in the inputs, tilting the portfolio toward positions whose risk is underestimated, so the ex-ante volatility understates the realized volatility.
 
 # Performance
 
