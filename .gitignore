@@ -29,6 +29,7 @@ wheels/
 
 # Claude generated files
 bash.exe.stackdump
-.claude/
+.claude/*
+!.claude/skills/
 settings.local.json
 
