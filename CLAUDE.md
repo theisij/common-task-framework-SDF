@@ -76,6 +76,14 @@ Rscript scripts/check_submission.R models_R/markowitz-ml
 
 The files to submit for a model are `models_R/<model>/<model>_standalone.R`, `data/processed/<model>.csv`, `models_R/<model>/renv.lock`, and `documentation/<model>/<model>.pdf`.
 
+## Pull Request Workflow
+
+Every change goes to `main` through a pull request, following the `/pr-review-cycle` skill (`.claude/skills/pr-review-cycle/SKILL.md`):
+1. Open the PR and **wait for Copilot's review** before merging: `scripts/copilot_review.sh <pr>`. Copilot reviews once, 1.5–4 minutes after the PR opens, and doesn't re-review later pushes.
+2. Verify each comment against the code or data. Fix valid ones on the same branch and rerun the relevant tests.
+3. Reply under every comment ("Fixed in <sha>: …" or "Not changed: <reason, evidence>").
+4. Squash-merge through the REST API (`gh pr merge` can fail in gh 2.45), then sync local `main` and, if code changed, the HPC.
+
 ## Architecture
 
 ### Data Flow
@@ -144,6 +152,7 @@ See "CTF Competition Rules" above for the full output contract.
 - `utils/R/local_testing.R` provides `run_toy_tests()` (output contract, determinism and lookahead tests on validation-like toy data) and `validate_portfolio()` for model validation
 - `scripts/build_model.R` inlines `source()` calls to produce standalone R files for HPC submission, and writes a per-model `renv.lock` (only that model's packages)
 - `scripts/check_submission.R` checks a model's submission files against the CTF rules; `scripts/submission_utils.R` holds the shared package lists (pre-installed, forbidden)
+- `scripts/copilot_review.sh <pr>` waits for Copilot's review of a PR and prints its verdict and inline comments with ids
 - `scripts/code_version.R` writes each model's documentation section recording the public repo, tag, commit and script checksum of a submission
 - `utils/R/output_utils.R` provides `finalize_output()`, which enforces the output contract at the end of `main()`
 - `utils/R/performance_stats.R` provides `perf_stats()` (mean, SD, Sharpe ratio, gross leverage, turnover, maximum drawdown); `scripts/performance_stats.R` writes each model's documentation table and cumulative-return figure
