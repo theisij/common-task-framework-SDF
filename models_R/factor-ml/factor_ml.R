@@ -63,6 +63,9 @@ main <- function(chars, features, daily_ret) {
 
   # Convert to data.table
   chars <- as.data.table(chars)
+  # Fix the row order: XGBoost's row subsampling picks rows by position, so the
+  # weights must not depend on the order rows arrive in (docs/ctf_rules.md, Rule 18)
+  setorder(chars, id, eom)
   features <- features$features
 
   # Prepare data: percentile rank + impute

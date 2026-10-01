@@ -544,6 +544,10 @@ main <- function(chars, features, daily_ret) {
   # Convert inputs to data.table
   chars <- as.data.table(chars)
   daily_ret <- as.data.table(daily_ret)
+  # Fix the row order: XGBoost's row subsampling picks rows by position, so the
+  # weights must not depend on the order rows arrive in (docs/ctf_rules.md, Rule 18)
+  setorder(chars, id, eom)
+  setorder(daily_ret, id, date)
   features <- features$features
 
   # ═══════════════════════════════════════════════════════════════════════════════
