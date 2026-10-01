@@ -23,9 +23,11 @@ commit_date <- git("show", "-s", "--format=%cs", commit)
 
 for (m in names(models)) {
   script <- sprintf("models_R/%s/%s_standalone.R", m, models[[m]])
-  # Checksum of the script as stored at the tag (not the working tree)
+  # Checksum of the exact bytes stored at the tag (not the working tree): git writes
+  # the blob straight to a file, so no re-encoding or line-ending conversion
   tmp <- tempfile(fileext = ".R")
-  writeLines(git("show", paste0(tag, ":", script)), tmp)
+  status <- system2("git", c("cat-file", "blob", shQuote(paste0(tag, ":", script))), stdout = tmp)
+  if (!identical(status, 0L)) stop(sprintf("git cat-file failed for %s:%s", tag, script))
   sha <- digest::digest(file = tmp, algo = "sha256")
   stopifnot(identical(sha, digest::digest(file = script, algo = "sha256")))  # working tree must match the tag
   lines <- c(
