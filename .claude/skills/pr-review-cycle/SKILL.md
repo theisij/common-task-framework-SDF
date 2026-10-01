@@ -12,7 +12,7 @@ Use this for every change that goes to `main`. Copilot reviews each PR **once**,
 - **Branch:** start from an up-to-date `main`: `git fetch && git switch -c <type>/<short-name> origin/main` (types: `fix/`, `docs/`, `feat/`).
 - **Model code changes:** before committing, follow the pre-submission checklist in `CLAUDE.md`: rebuild the standalone files and lock files (`scripts/build_model.R`), run the toy tests, and run `scripts/check_submission.R`. If results can change, plan full HPC reruns before merging (or before tagging a release).
 - **Commit message:** say why, not just what, and end with the attribution line from the system prompt.
-- **Push:** `git push -u origin <branch>`. If SSH fails with "Permission denied (publickey)", run `export SSH_AUTH_SOCK=/run/user/1000/keyring/ssh` first (see memory).
+- **Push:** `git push -u origin <branch>`. If SSH fails with "Permission denied (publickey)", the session probably has no SSH agent (common when Claude Code is started from a remote login). Look for this machine's running agent: `ssh-add -l` with `SSH_AUTH_SOCK` pointing at a candidate socket, such as a desktop keyring under `/run/user/$(id -u)/`. Use it if found; otherwise ask the user. As a fallback, push over HTTPS with the `gh` login: `git -c credential.helper= -c credential.helper='!gh auth git-credential' push https://github.com/<owner>/<repo>.git <branch>`.
 
 ## 2. Open the PR
 
@@ -34,13 +34,15 @@ EOF
 
 `gh pr edit` and `gh pr merge` can fail with a "Projects (classic) is being deprecated" GraphQL error in gh 2.45. Use the REST API instead (below).
 
-## 3. Wait for Copilot's review
+## 3. Wait for Copilot's review in the background
+
+Start the watcher as a **background task** right after opening the PR (in Claude Code: Bash with `run_in_background: true`), and keep working on other things. A notification arrives when the review lands, usually after 1.5–4 minutes:
 
 ```bash
-scripts/copilot_review.sh <pr-number>     # polls up to 15 min, prints verdict and inline comments with ids
+scripts/copilot_review.sh <pr-number>     # polls up to 15 min, then prints the verdict and inline comments with ids
 ```
 
-Run it in the background, or wait for it. If it times out, tell the user and ask whether to merge without a review.
+When the notification arrives, read the task's output and continue with step 4. If the script times out (exit code 2), tell the user and ask whether to merge without a review. Don't merge while the watcher is still waiting.
 
 ## 4. Evaluate every comment
 

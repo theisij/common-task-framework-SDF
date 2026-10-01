@@ -79,7 +79,7 @@ The files to submit for a model are `models_R/<model>/<model>_standalone.R`, `da
 ## Pull Request Workflow
 
 Every change goes to `main` through a pull request, following the `/pr-review-cycle` skill (`.claude/skills/pr-review-cycle/SKILL.md`):
-1. Open the PR and **wait for Copilot's review** before merging: `scripts/copilot_review.sh <pr>`. Copilot reviews once, 1.5–4 minutes after the PR opens, and doesn't re-review later pushes.
+1. Open the PR and **wait for Copilot's review** before merging: run `scripts/copilot_review.sh <pr>` as a background task and keep working; it reports when the review lands. Copilot reviews once, 1.5–4 minutes after the PR opens, and doesn't re-review later pushes.
 2. Verify each comment against the code or data. Fix valid ones on the same branch and rerun the relevant tests.
 3. Reply under every comment ("Fixed in <sha>: …" or "Not changed: <reason, evidence>").
 4. Squash-merge through the REST API (`gh pr merge` can fail in gh 2.45), then sync local `main` and, if code changed, the HPC.
