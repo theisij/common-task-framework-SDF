@@ -22,7 +22,7 @@ The full rules are in [`docs/ctf_rules.md`](docs/ctf_rules.md) (a copy of https:
 
 **Determinism (Rule 18).**
 - Call `set.seed()` at the start of `main()`. Results must be identical across runs and across thread counts (tolerance: relative 1e-5, absolute 1e-8).
-- Results must not depend on how the data is fed in: the order of rows, of the feature list, or of columns. XGBoost samples rows and columns by position, and glmnet's coordinate descent visits columns in order (feature order moved Minimum Variance weights by ~1e-4). Every R model starts `main()` with `canonical_chars()`, `canonical_daily_ret()` and `canonical_features()` (`utils/R/data_prep.R`), which sort rows by `id` and date, columns by name, and the feature list alphabetically (radix sort, the same in every locale). The toy tests rerun each model on fully shuffled input.
+- Results must not depend on how the data is fed in: the order of rows, of the feature list, or of columns. XGBoost samples rows and columns by position, and glmnet's coordinate descent visits columns in order (feature order moved Minimum Variance weights by ~1e-4). Every R model starts `main()` by passing each input it uses through the matching helper in `utils/R/data_prep.R`: `canonical_chars()`, `canonical_features()`, and `canonical_daily_ret()` if it uses daily returns (Factor-ML doesn't). They sort rows by `id` and date, columns by name, and the feature list alphabetically (radix sort, the same in every locale). The toy tests rerun each model on fully shuffled input.
 
 **Security (Rules 10, 15).**
 - No network access, `system()`/`system2()`/`shell()`, `eval()`/`parse()`, `source()`, or `Sys.setenv()`.
