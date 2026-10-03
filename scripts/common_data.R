@@ -25,7 +25,7 @@ data_set <- list(
   )
 )
 
-data_folder <- "../../../../International Stock Data/Public/Data/"
+data_folder <- "../../../../International Stock Data/Public/Data/"  # JKP USA.csv release of 2025-02-22 (data through 2024)
 
 # Regions ----------------------------------------------------------------------
 regions <- c("us", "dev_ex_us", "em")
